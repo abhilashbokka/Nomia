@@ -216,3 +216,13 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# macOS
+.DS_Store
+
+# Nomia runtime data (journal DB, reports, thumbnails, logs) when using a
+# project-local NOMIA_HOME instead of the platformdirs default location
+/nomia_data/
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
