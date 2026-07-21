@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nomia · Board</title>
+<style>
+  :root{
+    --ink:#1b2130; --paper:#f4f6f9; --panel:#ffffff; --rule:#e2e7ef;
+    --muted:#727b8a; --faint:#9aa3b2; --accent:#4b4bd6; --accent-soft:#ececfb;
+    --p0:#7a8393; --p1:#4b4bd6; --p2:#1f9e8f; --p3:#c07f27; --p4:#b3483d;
+    --p5:#6f52c9; --p6:#3577cf; --p7:#5a8f3c;
+    --hi:#c8483d; --med:#c07f27;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    font-family:var(--sans); color:var(--ink); background:var(--paper);
+    -webkit-font-smoothing:antialiased; line-height:1.45;
+  }
+  header{
+    padding:22px 28px 16px; border-bottom:1px solid var(--rule); background:var(--panel);
+    position:sticky; top:0; z-index:20;
+  }
+  .titlerow{display:flex; align-items:baseline; gap:14px; flex-wrap:wrap}
+  h1{font-size:20px; font-weight:640; letter-spacing:-.02em; margin:0}
+  h1 .dot{color:var(--accent)}
+  .sub{font-family:var(--mono); font-size:11px; color:var(--faint); letter-spacing:.04em; text-transform:uppercase}
+  .spacer{flex:1}
+  .actions{display:flex; gap:8px}
+  button{
+    font-family:var(--sans); font-size:13px; font-weight:520; color:var(--ink);
+    background:var(--panel); border:1px solid var(--rule); border-radius:8px;
+    padding:7px 12px; cursor:pointer; transition:border-color .15s, background .15s;
+  }
+  button:hover{border-color:var(--accent)}
+  button.primary{background:var(--accent); color:#fff; border-color:var(--accent)}
+  button.primary:hover{filter:brightness(1.06)}
+  button:focus-visible, .card:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+
+  .meta{display:flex; align-items:center; gap:18px; margin-top:14px; flex-wrap:wrap}
+  .progress{flex:1; min-width:220px}
+  .bar{height:6px; border-radius:99px; background:var(--rule); overflow:hidden}
+  .bar > i{display:block; height:100%; background:var(--accent); width:0; transition:width .4s ease}
+  .progress .lbl{font-family:var(--mono); font-size:11px; color:var(--muted); margin-bottom:6px; letter-spacing:.03em}
+  .filters{display:flex; gap:10px; align-items:center}
+  select{
+    font-family:var(--mono); font-size:12px; color:var(--ink); background:var(--panel);
+    border:1px solid var(--rule); border-radius:7px; padding:6px 8px; cursor:pointer;
+  }
+
+  .phases{display:flex; gap:7px; margin-top:14px; flex-wrap:wrap}
+  .phasechip{
+    font-family:var(--mono); font-size:11px; padding:4px 9px; border-radius:99px;
+    border:1px solid var(--rule); color:var(--muted); background:var(--panel); cursor:pointer;
+    display:flex; align-items:center; gap:7px; user-select:none;
+  }
+  .phasechip .swatch{width:8px; height:8px; border-radius:2px}
+  .phasechip.active{border-color:var(--ink); color:var(--ink)}
+  .phasechip .cnt{color:var(--faint)}
+
+  main{padding:20px 28px 60px}
+  .board{display:grid; grid-template-columns:repeat(5,minmax(210px,1fr)); gap:14px; align-items:start}
+  @media(max-width:1080px){ .board{grid-auto-flow:column; grid-template-columns:none; grid-auto-columns:78vw; overflow-x:auto; scroll-snap-type:x proximity} .col{scroll-snap-align:start} }
+  .col{background:transparent}
+  .colhead{
+    display:flex; align-items:center; justify-content:space-between; padding:2px 4px 10px;
+    position:sticky; top:0;
+  }
+  .colhead .name{font-size:13px; font-weight:620; letter-spacing:-.01em}
+  .colhead .n{font-family:var(--mono); font-size:11px; color:var(--faint)}
+  .drop{min-height:60px; border-radius:12px; padding:4px; transition:background .15s}
+  .drop.over{background:var(--accent-soft)}
+
+  .card{
+    background:var(--panel); border:1px solid var(--rule); border-radius:11px;
+    padding:11px 12px 12px; margin-bottom:10px; cursor:grab;
+    box-shadow:0 1px 2px rgba(27,33,48,.04); transition:box-shadow .15s, transform .05s, border-color .15s;
+  }
+  .card:hover{box-shadow:0 4px 14px rgba(27,33,48,.08); border-color:#d3d9e3}
+  .card:active{cursor:grabbing}
+  .card.dragging{opacity:.45}
+  .card .toprow{display:flex; align-items:center; gap:7px; margin-bottom:7px}
+  .pbadge{font-family:var(--mono); font-size:10px; font-weight:600; color:#fff; padding:2px 6px; border-radius:5px; letter-spacing:.02em}
+  .idtag{font-family:var(--mono); font-size:10px; color:var(--faint); letter-spacing:.03em}
+  .prio{width:7px; height:7px; border-radius:99px; margin-left:auto; flex:none}
+  .prio.high{background:var(--hi)} .prio.med{background:var(--med)} .prio.low{background:transparent; border:1px solid var(--rule)}
+  .card .ttl{font-size:13px; font-weight:520; letter-spacing:-.005em; line-height:1.35}
+  .card .typetag{
+    display:inline-block; margin-top:9px; font-family:var(--mono); font-size:9px; text-transform:uppercase;
+    letter-spacing:.07em; color:var(--muted); border:1px solid var(--rule); border-radius:5px; padding:2px 6px;
+  }
+
+  /* modal */
+  .scrim{position:fixed; inset:0; background:rgba(27,33,48,.42); display:none; align-items:center; justify-content:center; z-index:50; padding:20px}
+  .scrim.show{display:flex}
+  .modal{background:var(--panel); border-radius:16px; width:min(520px,100%); padding:24px; box-shadow:0 24px 60px rgba(27,33,48,.28)}
+  .modal h2{font-size:16px; margin:0 0 4px}
+  .modal .mid{font-family:var(--mono); font-size:11px; color:var(--faint); margin-bottom:18px}
+  .field{margin-bottom:14px}
+  .field label{display:block; font-family:var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin-bottom:5px}
+  .field input, .field textarea, .field select{width:100%; font-family:var(--sans); font-size:13px; color:var(--ink); border:1px solid var(--rule); border-radius:8px; padding:9px 10px; background:var(--paper)}
+  .field textarea{resize:vertical; min-height:64px}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  .modal .foot{display:flex; gap:8px; margin-top:20px}
+  .modal .foot .spacer{flex:1}
+  button.ghostdanger{color:var(--hi); border-color:transparent}
+  button.ghostdanger:hover{border-color:var(--hi)}
+  .hint{font-family:var(--mono); font-size:11px; color:var(--faint); padding:14px 28px 0}
+</style>
+</head>
+<body>
+<header>
+  <div class="titlerow">
+    <h1>Nomia<span class="dot">.</span>board</h1>
+    <span class="sub" id="proj-sub">local backlog</span>
+    <div class="spacer"></div>
+    <div class="actions">
+      <button onclick="addTask()">+ Task</button>
+      <button onclick="importJSON()">Import</button>
+      <button class="primary" onclick="exportJSON()">Export tasks.json</button>
+    </div>
+  </div>
+  <div class="meta">
+    <div class="progress">
+      <div class="lbl" id="prog-lbl">0 / 0 done</div>
+      <div class="bar"><i id="prog-bar"></i></div>
+    </div>
+    <div class="filters">
+      <select id="f-type" onchange="render()">
+        <option value="">all types</option>
+        <option value="feature">feature</option>
+        <option value="infra">infra</option>
+        <option value="ui">ui</option>
+        <option value="safety">safety</option>
+        <option value="test">test</option>
+      </select>
+    </div>
+  </div>
+  <div class="phases" id="phases"></div>
+</header>
+
+<main>
+  <div class="board" id="board"></div>
+</main>
+<div class="hint">Drag cards between columns to update status. Export <span style="font-family:var(--mono)">tasks.json</span> and commit it — that file is the source of truth.</div>
+
+<input type="file" id="filein" accept="application/json" style="display:none">
+
+<div class="scrim" id="scrim">
+  <div class="modal">
+    <h2 id="m-title">Task</h2>
+    <div class="mid" id="m-id"></div>
+    <div class="field"><label>Title</label><input id="m-ttl"></div>
+    <div class="field"><label>Description</label><textarea id="m-desc"></textarea></div>
+    <div class="grid2">
+      <div class="field"><label>Phase</label><select id="m-phase"></select></div>
+      <div class="field"><label>Status</label><select id="m-status"></select></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>Type</label>
+        <select id="m-type"><option>feature</option><option>infra</option><option>ui</option><option>safety</option><option>test</option></select>
+      </div>
+      <div class="field"><label>Priority</label>
+        <select id="m-prio"><option>high</option><option>med</option><option>low</option></select>
+      </div>
+    </div>
+    <div class="foot">
+      <button class="ghostdanger" id="m-del" onclick="deleteTask()">Delete</button>
+      <div class="spacer"></div>
+      <button onclick="closeModal()">Cancel</button>
+      <button class="primary" onclick="saveTask()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SEED = {
+  "project":"Nomia","updated":"2026-07-21",
+  "columns":["Backlog","To Do","In Progress","Review","Done"],
+  "phases":{"0":"Skeleton","1":"v1.0 core","2":"Search index","3":"Format expansion","4":"Scheduling & unattended runs","5":"UI polish & onboarding","6":"Multi-model choices","7":"Advanced"},
+  "tasks":[
+    {"id":"P0-01","title":"Repo scaffold with uv + pyproject","phase":0,"type":"infra","status":"To Do","priority":"high","desc":"Package layout, dependencies, .gitignore, MIT license, docs/ for logo."},
+    {"id":"P0-02","title":"YAML config file","phase":0,"type":"infra","status":"To Do","priority":"high","desc":"Single source of truth for monitored folders, categories, naming templates, thresholds, schedule."},
+    {"id":"P0-03","title":"FileTypeDetector + handler registry","phase":0,"type":"feature","status":"To Do","priority":"high","desc":"Detect real type via magic bytes (not just extension), reconcile with extension, dispatch to a registered handler. Strategy pattern."},
+    {"id":"P0-04","title":"Pydantic classification schema","phase":0,"type":"infra","status":"To Do","priority":"high","desc":"category, subcategory?, description, reason, confidence. Enforced on every model response."},
+    {"id":"P0-05","title":"Structured logging","phase":0,"type":"infra","status":"To Do","priority":"med","desc":"Per-file, per-run logging that the audit report and run history both draw from."},
+    {"id":"P1-01","title":"PDF handler (PyMuPDF)","phase":1,"type":"feature","status":"Backlog","priority":"high","desc":"First-page text; if no text layer, render page 1 to image for vision."},
+    {"id":"P1-02","title":"Image handler","phase":1,"type":"feature","status":"Backlog","priority":"high","desc":"jpg/png/webp/heic/tiff/bmp/gif; pillow-heif; respect EXIF orientation."},
+    {"id":"P1-03","title":"Word handler (python-docx)","phase":1,"type":"feature","status":"Backlog","priority":"high","desc":"Extract text from .docx."},
+    {"id":"P1-04","title":"Text handler (.txt/.md)","phase":1,"type":"feature","status":"Backlog","priority":"high","desc":"Read text directly."},
+    {"id":"P1-05","title":"Text-first classifier","phase":1,"type":"feature","status":"Backlog","priority":"high","desc":"Send text when available, image only when not. One vision-capable LLM handling both; temperature 0."},
+    {"id":"P1-06","title":"Retry + JSON-repair logic","phase":1,"type":"feature","status":"Backlog","priority":"high","desc":"Retry transient errors with backoff; one repair reprompt before counting a hard fail."},
+    {"id":"P1-07","title":"Rename-in-place mode (default)","phase":1,"type":"feature","status":"Backlog","priority":"high","desc":"File stays put, just gets a better name. The safe default."},
+    {"id":"P1-08","title":"Move-to-folders mode (opt-in)","phase":1,"type":"feature","status":"Backlog","priority":"med","desc":"Sort into the editable category tree at a destination path."},
+    {"id":"P1-09","title":"Confidence routing","phase":1,"type":"feature","status":"Backlog","priority":"high","desc":"auto / review / unsorted by configurable thresholds."},
+    {"id":"P1-10","title":"Dry-run \u2192 preview \u2192 apply","phase":1,"type":"safety","status":"Backlog","priority":"high","desc":"Nothing touches disk until confirmed."},
+    {"id":"P1-11","title":"Undo journal","phase":1,"type":"safety","status":"Backlog","priority":"high","desc":"Full batch rollback of any applied run."},
+    {"id":"P1-12","title":"Content-hash dedup","phase":1,"type":"feature","status":"Backlog","priority":"med","desc":"SHA-256; keep one, log the rest as duplicates."},
+    {"id":"P1-13","title":"Collision + date-ordered copy sequencing","phase":1,"type":"feature","status":"Backlog","priority":"high","desc":"Group copies, sort by creation date ascending, assign stable sequential index. Never overwrite, never random suffix."},
+    {"id":"P1-14","title":"Excel audit log","phase":1,"type":"feature","status":"Backlog","priority":"high","desc":"Row per file: original, new name, category, reason, confidence, model, destination, action."},
+    {"id":"P1-15","title":"Minimal web UI","phase":1,"type":"ui","status":"Backlog","priority":"high","desc":"Pick folders, mode, category tree, naming template + live preview, review/apply, undo."},
+    {"id":"P1-16","title":"benchmark.py + labeled sample set","phase":1,"type":"test","status":"Backlog","priority":"high","desc":"Accuracy per category and per format, reproducible. The honest README number."},
+    {"id":"P1-17","title":"Edge-case regression suite","phase":1,"type":"test","status":"Backlog","priority":"med","desc":"Colon/illegal names, HEIC, encrypted/zero-byte PDF, unicode, mislabeled extensions, duplicate ordering."},
+    {"id":"P2-01","title":"SQLite FTS5 index","phase":2,"type":"feature","status":"Backlog","priority":"med","desc":"Keyword search over name/description/text/category, hash-keyed so it survives moves."},
+    {"id":"P2-02","title":"/search endpoint + UI search bar","phase":2,"type":"feature","status":"Backlog","priority":"med","desc":"BM25 ranking, snippet previews, thumbnails."},
+    {"id":"P3-01","title":"RTF + ODT handlers","phase":3,"type":"feature","status":"Backlog","priority":"low","desc":"striprtf / odfpy \u2192 text."},
+    {"id":"P3-02","title":"PPTX handler","phase":3,"type":"feature","status":"Backlog","priority":"low","desc":"python-pptx \u2192 slide text."},
+    {"id":"P3-03","title":"CSV + XLSX handler","phase":3,"type":"feature","status":"Backlog","priority":"med","desc":"Headers + first rows / sheet names \u2192 text."},
+    {"id":"P3-04","title":"HTML handler","phase":3,"type":"feature","status":"Backlog","priority":"med","desc":"Title + text extraction."},
+    {"id":"P3-05","title":"ICS handler","phase":3,"type":"feature","status":"Backlog","priority":"med","desc":"icalendar \u2192 SUMMARY + DTSTART \u2192 date_event-title.ics. Commonly misnamed."},
+    {"id":"P3-06","title":"Email handler (.eml/.msg)","phase":3,"type":"feature","status":"Backlog","priority":"low","desc":"Subject + sender + date \u2192 text."},
+    {"id":"P3-07","title":"Archive handler (zip/rar/7z)","phase":3,"type":"feature","status":"Backlog","priority":"low","desc":"Peek at the file list, classify by contents. Never extract."},
+    {"id":"P4-01","title":"Nightly scheduler","phase":4,"type":"feature","status":"Backlog","priority":"med","desc":"launchd (macOS) / cron / Task Scheduler over Downloads + Desktop; optional extra folders."},
+    {"id":"P4-02","title":"Unattended safety gate","phase":4,"type":"safety","status":"Backlog","priority":"high","desc":"Auto-act only above confidence gate; quarantine the rest. No guessing when no human is watching."},
+    {"id":"P4-03","title":"Idempotency (process new/changed only)","phase":4,"type":"safety","status":"Backlog","priority":"high","desc":"Use the index so nightly runs don't re-classify the whole folder."},
+    {"id":"P4-04","title":"Skip in-progress downloads","phase":4,"type":"safety","status":"Backlog","priority":"high","desc":"Ignore .crdownload/.part/.download and very-recently-modified files."},
+    {"id":"P4-05","title":"Run notification + history","phase":4,"type":"ui","status":"Backlog","priority":"med","desc":"Post-run summary notification and an activity feed in the UI."},
+    {"id":"P5-01","title":"Keyboard-driven triage queue","phase":5,"type":"ui","status":"Backlog","priority":"med","desc":"Fast review of uncertain files; accept/edit/skip via keys."},
+    {"id":"P5-02","title":"Stats dashboard","phase":5,"type":"ui","status":"Backlog","priority":"low","desc":"Files organized, category distribution, time saved. Portfolio-worthy screenshot."},
+    {"id":"P5-03","title":"Onboarding wizard","phase":5,"type":"ui","status":"Backlog","priority":"med","desc":"Pick folders \u2192 pick categories \u2192 done. Beats the non-technical install pain."},
+    {"id":"P5-04","title":"Explain-decision popover","phase":5,"type":"ui","status":"Backlog","priority":"low","desc":"Show the model's reason and which model answered."},
+    {"id":"P5-05","title":"Dark mode + export audit log","phase":5,"type":"ui","status":"Backlog","priority":"low","desc":"Apple-clean dark theme; export audit log to Excel/CSV."},
+    {"id":"P6-01","title":"Multi-model fallback chain","phase":6,"type":"feature","status":"Backlog","priority":"low","desc":"Vendor-diverse chain (Qwen2.5-VL \u2192 Llama3.2-Vision \u2192 Gemma), soft/hard escalation."},
+    {"id":"P6-02","title":"Batch-by-model pass strategy","phase":6,"type":"feature","status":"Backlog","priority":"low","desc":"Run all files through model A, then only failures through B, then C. Avoids load thrash."},
+    {"id":"P6-03","title":"All-failed handling + model selector","phase":6,"type":"feature","status":"Backlog","priority":"low","desc":"Non-vision fallback signals; optional single cloud call; model picker in UI."},
+    {"id":"P7-01","title":"Semantic search","phase":7,"type":"feature","status":"Backlog","priority":"low","desc":"nomic-embed-text + sqlite-vec on the same DB."},
+    {"id":"P7-02","title":"Audio + video metadata handlers","phase":7,"type":"feature","status":"Backlog","priority":"low","desc":"ID3/Vorbis tags; screen recordings sample a frame to vision."},
+    {"id":"P7-03","title":"Real-time watch-folder mode","phase":7,"type":"feature","status":"Backlog","priority":"low","desc":"watchdog-based live organizing as an alternative to nightly batch."}
+  ]
+};
+
+let DATA = JSON.parse(JSON.stringify(SEED));
+let phaseFilter = null;
+let editingId = null;
+const pcolor = p => getComputedStyle(document.documentElement).getPropertyValue('--p'+p).trim();
+
+function visible(){
+  const tf = document.getElementById('f-type').value;
+  return DATA.tasks.filter(t =>
+    (phaseFilter===null || t.phase===phaseFilter) &&
+    (!tf || t.type===tf));
+}
+
+function render(){
+  document.getElementById('proj-sub').textContent = DATA.project.toLowerCase()+' · local backlog';
+  // phases strip
+  const pc = document.getElementById('phases'); pc.innerHTML='';
+  Object.keys(DATA.phases).forEach(p=>{
+    const total = DATA.tasks.filter(t=>t.phase==+p).length;
+    const done = DATA.tasks.filter(t=>t.phase==+p && t.status==='Done').length;
+    const chip = document.createElement('div');
+    chip.className='phasechip'+(phaseFilter==+p?' active':'');
+    chip.innerHTML=`<span class="swatch" style="background:${pcolor(p)}"></span>P${p} ${DATA.phases[p]} <span class="cnt">${done}/${total}</span>`;
+    chip.onclick=()=>{ phaseFilter = (phaseFilter==+p?null:+p); render(); };
+    pc.appendChild(chip);
+  });
+  // progress
+  const all = DATA.tasks.length, dn = DATA.tasks.filter(t=>t.status==='Done').length;
+  document.getElementById('prog-lbl').textContent = `${dn} / ${all} done`;
+  document.getElementById('prog-bar').style.width = all? (dn/all*100)+'%':'0';
+  // board
+  const b = document.getElementById('board'); b.innerHTML='';
+  const vis = visible();
+  DATA.columns.forEach(col=>{
+    const items = vis.filter(t=>t.status===col);
+    const wrap = document.createElement('div'); wrap.className='col';
+    wrap.innerHTML = `<div class="colhead"><span class="name">${col}</span><span class="n">${items.length}</span></div>`;
+    const drop = document.createElement('div'); drop.className='drop'; drop.dataset.col=col;
+    drop.addEventListener('dragover', e=>{e.preventDefault(); drop.classList.add('over');});
+    drop.addEventListener('dragleave', ()=>drop.classList.remove('over'));
+    drop.addEventListener('drop', e=>{
+      e.preventDefault(); drop.classList.remove('over');
+      const id=e.dataTransfer.getData('text/plain');
+      const t=DATA.tasks.find(x=>x.id===id); if(t){ t.status=col; render(); }
+    });
+    items.forEach(t=>drop.appendChild(cardEl(t)));
+    wrap.appendChild(drop); b.appendChild(wrap);
+  });
+}
+
+function cardEl(t){
+  const c=document.createElement('div'); c.className='card'; c.draggable=true; c.tabIndex=0;
+  c.innerHTML=`<div class="toprow">
+      <span class="pbadge" style="background:${pcolor(t.phase)}">P${t.phase}</span>
+      <span class="idtag">${t.id}</span>
+      <span class="prio ${t.priority}" title="${t.priority} priority"></span>
+    </div>
+    <div class="ttl">${esc(t.title)}</div>
+    <span class="typetag">${t.type}</span>`;
+  c.addEventListener('dragstart', e=>{ e.dataTransfer.setData('text/plain',t.id); c.classList.add('dragging'); });
+  c.addEventListener('dragend', ()=>c.classList.remove('dragging'));
+  c.addEventListener('click', ()=>openModal(t.id));
+  c.addEventListener('keydown', e=>{ if(e.key==='Enter') openModal(t.id); });
+  return c;
+}
+const esc = s => s.replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));
+
+// ---- modal ----
+function fillSelect(id, opts, val){
+  const s=document.getElementById(id); s.innerHTML='';
+  opts.forEach(o=>{ const el=document.createElement('option'); el.value=o.v??o; el.textContent=o.t??o; s.appendChild(el); });
+  s.value=val;
+}
+function openModal(id){
+  const t=DATA.tasks.find(x=>x.id===id); editingId=id;
+  document.getElementById('m-title').textContent='Edit task';
+  document.getElementById('m-id').textContent=t.id;
+  document.getElementById('m-ttl').value=t.title;
+  document.getElementById('m-desc').value=t.desc||'';
+  fillSelect('m-phase', Object.keys(DATA.phases).map(p=>({v:p,t:`P${p} · ${DATA.phases[p]}`})), String(t.phase));
+  fillSelect('m-status', DATA.columns, t.status);
+  document.getElementById('m-type').value=t.type;
+  document.getElementById('m-prio').value=t.priority;
+  document.getElementById('m-del').style.display='';
+  document.getElementById('scrim').classList.add('show');
+}
+function addTask(){
+  editingId=null;
+  const n = DATA.tasks.length+1;
+  document.getElementById('m-title').textContent='New task';
+  document.getElementById('m-id').textContent='auto id on save';
+  document.getElementById('m-ttl').value='';
+  document.getElementById('m-desc').value='';
+  fillSelect('m-phase', Object.keys(DATA.phases).map(p=>({v:p,t:`P${p} · ${DATA.phases[p]}`})), phaseFilter!==null?String(phaseFilter):'1');
+  fillSelect('m-status', DATA.columns, 'Backlog');
+  document.getElementById('m-type').value='feature';
+  document.getElementById('m-prio').value='med';
+  document.getElementById('m-del').style.display='none';
+  document.getElementById('scrim').classList.add('show');
+}
+function saveTask(){
+  const phase=+document.getElementById('m-phase').value;
+  const patch={
+    title:document.getElementById('m-ttl').value.trim()||'Untitled',
+    desc:document.getElementById('m-desc').value.trim(),
+    phase, type:document.getElementById('m-type').value,
+    status:document.getElementById('m-status').value,
+    priority:document.getElementById('m-prio').value
+  };
+  if(editingId){ Object.assign(DATA.tasks.find(x=>x.id===editingId), patch); }
+  else {
+    const same=DATA.tasks.filter(t=>t.phase===phase).length+1;
+    patch.id=`P${phase}-${String(same).padStart(2,'0')}`;
+    DATA.tasks.push(patch);
+  }
+  closeModal(); render();
+}
+function deleteTask(){ if(editingId){ DATA.tasks=DATA.tasks.filter(x=>x.id!==editingId); closeModal(); render(); } }
+function closeModal(){ document.getElementById('scrim').classList.remove('show'); }
+document.getElementById('scrim').addEventListener('click', e=>{ if(e.target.id==='scrim') closeModal(); });
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeModal(); });
+
+// ---- import / export ----
+function exportJSON(){
+  DATA.updated=new Date().toISOString().slice(0,10);
+  const blob=new Blob([JSON.stringify(DATA,null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='tasks.json'; a.click();
+  URL.revokeObjectURL(a.href);
+}
+function importJSON(){ document.getElementById('filein').click(); }
+document.getElementById('filein').addEventListener('change', e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=()=>{ try{ const d=JSON.parse(r.result); if(d.tasks&&d.columns){ DATA=d; phaseFilter=null; render(); } else alert('Not a valid tasks.json'); }catch{ alert('Could not parse JSON'); } };
+  r.readAsText(f); e.target.value='';
+});
+
+render();
+</script>
+</body>
+</html>
