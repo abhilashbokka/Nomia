@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Nomia</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="app-header">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">N</span>
+        <span class="brand-name">Nomia</span>
+      </div>
+      <div class="header-status" id="header-status"></div>
+    </header>
+
+    <div class="app-body">
+      <aside class="left-panel" id="left-panel">
+        <section class="panel-section">
+          <h2>Source folders</h2>
+          <ul class="folder-list" id="source-folder-list"></ul>
+          <div class="input-row">
+            <input type="text" id="source-folder-input" placeholder="/path/to/messy/folder" />
+            <button class="btn btn-secondary" id="add-source-btn">Add</button>
+          </div>
+        </section>
+
+        <section class="panel-section">
+          <h2>Destination</h2>
+          <div class="input-row">
+            <input type="text" id="destination-input" placeholder="/path/to/organized" />
+          </div>
+          <p class="hint" id="destination-hint"></p>
+        </section>
+
+        <section class="panel-section">
+          <h2>Categories</h2>
+          <ul class="category-list" id="category-list"></ul>
+          <button class="btn btn-tertiary" id="add-category-btn">+ Add category</button>
+        </section>
+
+        <section class="panel-section">
+          <h2>Naming</h2>
+          <select id="naming-preset-select"></select>
+          <div class="input-row" id="custom-template-row" hidden>
+            <input type="text" id="custom-template-input" placeholder="{category}_{yyyy}-{mm}-{dd}" />
+          </div>
+          <p class="naming-preview" id="naming-preview">example.pdf</p>
+        </section>
+
+        <section class="panel-section">
+          <h2>Model</h2>
+          <div id="model-selector"></div>
+        </section>
+
+        <section class="panel-section">
+          <h2>Safety</h2>
+          <label class="toggle-row">
+            <input type="checkbox" id="preserve-source-toggle" />
+            <span>Preserve source folder (copy only, nothing removed)</span>
+          </label>
+          <label class="toggle-row">
+            <input type="checkbox" id="keep-dump-toggle" />
+            <span>Keep raw backups in <code>_dump/</code></span>
+          </label>
+          <label class="toggle-row">
+            <input type="checkbox" id="sweep-other-toggle" />
+            <span>Sweep other file types into <code>_Other/</code></span>
+          </label>
+        </section>
+
+        <button class="btn btn-primary btn-block" id="save-config-btn">Save settings</button>
+        <p class="hint" id="save-config-hint"></p>
+      </aside>
+
+      <main class="review-panel">
+        <div class="toolbar">
+          <div class="filter-chips" id="filter-chips">
+            <button class="chip is-active" data-filter="all">All</button>
+            <button class="chip" data-filter="auto">Auto</button>
+            <button class="chip" data-filter="review">Review</button>
+            <button class="chip" data-filter="unsorted">Unsorted</button>
+          </div>
+          <input type="search" id="search-input" placeholder="Filter by name…" class="search-input" />
+        </div>
+
+        <div class="item-list" id="item-list">
+          <div class="empty-state" id="empty-state">
+            <p>Add source folders and a destination on the left, then run a dry-run preview to see what Nomia would do.</p>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <footer class="action-bar" id="action-bar">
+      <div class="action-bar-left" id="action-bar-status">Ready.</div>
+      <div class="action-bar-progress" id="action-bar-progress" hidden>
+        <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+        <span id="progress-label"></span>
+      </div>
+      <div class="action-bar-right">
+        <a class="btn btn-tertiary" id="report-link" href="#" target="_blank" rel="noopener" hidden>Open Excel report</a>
+        <button class="btn btn-tertiary" id="undo-last-btn" hidden>Undo last run</button>
+        <button class="btn btn-secondary" id="scan-btn">Dry-run / Preview</button>
+        <button class="btn btn-primary" id="apply-btn" disabled>Apply</button>
+      </div>
+    </footer>
+  </div>
+
+  <div class="toast" id="toast" hidden></div>
+
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
