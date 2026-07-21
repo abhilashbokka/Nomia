@@ -1,0 +1,62 @@
+{
+  "ambiguous_other.png": {
+    "category": "other",
+    "subcategory": null
+  },
+  "chart_sales.png": {
+    "category": "diagram_or_chart",
+    "subcategory": null
+  },
+  "contract_nda.pdf": {
+    "category": "contract_or_form",
+    "subcategory": null
+  },
+  "drugstore_receipt (1).jpg": {
+    "category": "receipt",
+    "subcategory": null
+  },
+  "drugstore_receipt copy.jpg": {
+    "category": "receipt",
+    "subcategory": null
+  },
+  "drugstore_receipt.jpg": {
+    "category": "receipt",
+    "subcategory": null
+  },
+  "handwritten_note.png": {
+    "category": "handwritten_note",
+    "subcategory": null
+  },
+  "invoice_acme.pdf": {
+    "category": "invoice",
+    "subcategory": null
+  },
+  "mock_bank_statement.pdf": {
+    "category": "bank_statement",
+    "subcategory": null
+  },
+  "mock_id_card.jpg": {
+    "category": "id_document",
+    "subcategory": "drivers_license"
+  },
+  "mock_medical_report.pdf": {
+    "category": "medical",
+    "subcategory": null
+  },
+  "photo_landscape.jpg": {
+    "category": "photo",
+    "subcategory": null
+  },
+  "receipt_costco.jpg": {
+    "category": "receipt",
+    "subcategory": "grocery"
+  },
+  "receipt_heic_sample.heic": {
+    "category": "receipt",
+    "subcategory": null
+  },
+  "screenshot_app.png": {
+    "category": "screenshot",
+    "subcategory": null
+  }
+}
