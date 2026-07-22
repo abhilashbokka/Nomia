@@ -1,0 +1,441 @@
+{
+  "moondream": {
+    "model": "moondream",
+    "total_files": 20,
+    "accuracy": 0.95,
+    "category_metrics": {
+      "receipt": {
+        "precision": 1.0,
+        "recall": 0.95,
+        "f1": 0.974,
+        "support": 20
+      },
+      "restaurant hasan bistro": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 0
+      }
+    },
+    "confusion_matrix": {
+      "receipt": {
+        "receipt": 19,
+        "restaurant hasan bistro": 1
+      }
+    },
+    "route_vs_correctness": {
+      "review": {
+        "correct": 19,
+        "incorrect": 1
+      }
+    },
+    "latency_seconds": {
+      "mean": 28.22,
+      "total": 564.36
+    },
+    "per_item": [
+      {
+        "file": "img_18fkbj3g.jpg",
+        "expected": "receipt",
+        "predicted": "receipt",
+        "confidence": 0.67,
+        "route": "review",
+        "correct": true,
+        "elapsed_seconds": 25.06
+      },
+      {
+        "file": "img_1ib2mwwf.jpg",
+        "expected": "receipt",
+        "predicted": "receipt",
+        "confidence": 0.68,
+        "route": "review",
+        "correct": true,
+        "elapsed_seconds": 30.83
+      },
+      {
+        "file": "img_3kegpet3.jpg",
+        "expected": "receipt",
+        "predicted": "receipt",
+        "confidence": 0.67,
+        "route": "review",
+        "correct": true,
+        "elapsed_seconds": 19.75
+      },
+      {
+        "file": "img_3n58t7py.jpg",
+        "expected": "receipt",
+        "predicted": "receipt",
+        "confidence": 0.67,
+        "route": "review",
+        "correct": true,
+        "elapsed_seconds": 21.66
+      },
+      {
+        "file": "img_3r2q35p2.jpg",
+        "expected": "receipt",
+        "predicted": "receipt",
+        "confidence": 0.68,
+        "route": "review",
+        "correct": true,
+        "elapsed_seconds": 24.41
+      },
+      {
+        "file": "img_44djo4je.jpg",
+        "expected": "receipt",
+        "predicted": "receipt",
+        "confidence": 0.66,
+        "route": "review",
+        "correct": true,
+        "elapsed_seconds": 21.74
+      },
+      {
+        "file": "img_6jf4z2qc.jpg",
+        "expected": "receipt",
+        "predicted": "receipt",
+        "confidence": 0.67,
+        "route": "review",
+        "correct": true,
+        "elapsed_seconds": 33.03
+      },
+      {
+        "file": "img_8pa67uyd.jpg",
+        "expected": "receipt",
+        "predicted": "receipt",
+        "confidence": 0.67,
+        "route": "review",
+        "correct": true,
+        "elapsed_seconds": 21.25
+      },
+      {
+        "file": "img_f8f4bnmm.jpg",
+        "expected": "receipt",
+        "predicted": "receipt",
+        "confidence": 0.64,
+        "route": "review",
+        "correct": true,
+        "elapsed_seconds": 33.03
+      },
+      {
+        "file": "img_gear8ctq.jpg",
+        "expected": "receipt",
+        "predicted": "receipt",
+        "confidence": 0.67,
+        "route": "review",
+        "correct": true,
+        "elapsed_seconds": 22.78
+      },
+      {
+        "file": "img_gvk3tr1t.jpg",
+        "expected": "receipt",
+        "predicted": "receipt",
+        "confidence": 0.66,
+        "route": "review",
+        "correct": true,
+        "elapsed_seconds": 33.88
+      },
+      {
+        "file": "img_i7qtasaf.jpg",
+        "expected": "receipt",
+        "predicted": "receipt",
+        "confidence": 0.67,
+        "route": "review",
+        "correct": true,
+        "elapsed_seconds": 23.35
+      },
+      {
+        "file": "img_l8cjcpho.jpg",
+        "expected": "receipt",
+        "predicted": "restaurant hasan bistro",
+        "confidence": 0.6,
+        "route": "review",
+        "correct": false,
+        "elapsed_seconds": 37.36
+      },
+      {
+        "file": "img_mew74cla.jpg",
+        "expected": "receipt",
+        "predicted": "receipt",
+        "confidence": 0.67,
+        "route": "review",
+        "correct": true,
+        "elapsed_seconds": 25.22
+      },
+      {
+        "file": "img_obkbsd7z.jpg",
+        "expected": "receipt",
+        "predicted": "receipt",
+        "confidence": 0.67,
+        "route": "review",
+        "correct": true,
+        "elapsed_seconds": 30.24
+      },
+      {
+        "file": "img_r3xxmz3f.jpg",
+        "expected": "receipt",
+        "predicted": "receipt",
+        "confidence": 0.61,
+        "route": "review",
+        "correct": true,
+        "elapsed_seconds": 28.16
+      },
+      {
+        "file": "img_rnbvfuf7.jpg",
+        "expected": "receipt",
+        "predicted": "receipt",
+        "confidence": 0.67,
+        "route": "review",
+        "correct": true,
+        "elapsed_seconds": 25.24
+      },
+      {
+        "file": "img_vdujuxrm.jpg",
+        "expected": "receipt",
+        "predicted": "receipt",
+        "confidence": 0.67,
+        "route": "review",
+        "correct": true,
+        "elapsed_seconds": 25.02
+      },
+      {
+        "file": "img_yw1fhp0h.jpg",
+        "expected": "receipt",
+        "predicted": "receipt",
+        "confidence": 0.66,
+        "route": "review",
+        "correct": true,
+        "elapsed_seconds": 35.92
+      },
+      {
+        "file": "img_z5s3n4sz.jpg",
+        "expected": "receipt",
+        "predicted": "receipt",
+        "confidence": 0.66,
+        "route": "review",
+        "correct": true,
+        "elapsed_seconds": 46.43
+      }
+    ]
+  },
+  "qwen2.5vl:3b": {
+    "model": "qwen2.5vl:3b",
+    "total_files": 20,
+    "accuracy": 0.45,
+    "category_metrics": {
+      "receipt": {
+        "precision": 1.0,
+        "recall": 0.45,
+        "f1": 0.621,
+        "support": 20
+      },
+      "invoice": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 0
+      }
+    },
+    "confusion_matrix": {
+      "receipt": {
+        "receipt": 9,
+        "invoice": 8,
+        "(failed)": 3
+      }
+    },
+    "route_vs_correctness": {
+      "auto": {
+        "correct": 9,
+        "incorrect": 8
+      },
+      "failed": {
+        "correct": 0,
+        "incorrect": 3
+      }
+    },
+    "latency_seconds": {
+      "mean": 66.94,
+      "total": 1338.72
+    },
+    "per_item": [
+      {
+        "file": "img_18fkbj3g.jpg",
+        "expected": "receipt",
+        "predicted": "receipt",
+        "confidence": 0.99,
+        "route": "auto",
+        "correct": true,
+        "elapsed_seconds": 52.89
+      },
+      {
+        "file": "img_1ib2mwwf.jpg",
+        "expected": "receipt",
+        "predicted": "receipt",
+        "confidence": 0.99,
+        "route": "auto",
+        "correct": true,
+        "elapsed_seconds": 55.08
+      },
+      {
+        "file": "img_3kegpet3.jpg",
+        "expected": "receipt",
+        "predicted": "receipt",
+        "confidence": 1.0,
+        "route": "auto",
+        "correct": true,
+        "elapsed_seconds": 55.45
+      },
+      {
+        "file": "img_3n58t7py.jpg",
+        "expected": "receipt",
+        "predicted": "invoice",
+        "confidence": 0.99,
+        "route": "auto",
+        "correct": false,
+        "elapsed_seconds": 65.85
+      },
+      {
+        "file": "img_3r2q35p2.jpg",
+        "expected": "receipt",
+        "predicted": null,
+        "confidence": null,
+        "route": "failed",
+        "correct": false,
+        "elapsed_seconds": 90.08
+      },
+      {
+        "file": "img_44djo4je.jpg",
+        "expected": "receipt",
+        "predicted": null,
+        "confidence": null,
+        "route": "failed",
+        "correct": false,
+        "elapsed_seconds": 90.04
+      },
+      {
+        "file": "img_6jf4z2qc.jpg",
+        "expected": "receipt",
+        "predicted": "receipt",
+        "confidence": 0.99,
+        "route": "auto",
+        "correct": true,
+        "elapsed_seconds": 58.96
+      },
+      {
+        "file": "img_8pa67uyd.jpg",
+        "expected": "receipt",
+        "predicted": null,
+        "confidence": null,
+        "route": "failed",
+        "correct": false,
+        "elapsed_seconds": 90.03
+      },
+      {
+        "file": "img_f8f4bnmm.jpg",
+        "expected": "receipt",
+        "predicted": "invoice",
+        "confidence": 0.99,
+        "route": "auto",
+        "correct": false,
+        "elapsed_seconds": 81.05
+      },
+      {
+        "file": "img_gear8ctq.jpg",
+        "expected": "receipt",
+        "predicted": "receipt",
+        "confidence": 0.99,
+        "route": "auto",
+        "correct": true,
+        "elapsed_seconds": 57.88
+      },
+      {
+        "file": "img_gvk3tr1t.jpg",
+        "expected": "receipt",
+        "predicted": "invoice",
+        "confidence": 0.99,
+        "route": "auto",
+        "correct": false,
+        "elapsed_seconds": 81.03
+      },
+      {
+        "file": "img_i7qtasaf.jpg",
+        "expected": "receipt",
+        "predicted": "invoice",
+        "confidence": 0.99,
+        "route": "auto",
+        "correct": false,
+        "elapsed_seconds": 65.24
+      },
+      {
+        "file": "img_l8cjcpho.jpg",
+        "expected": "receipt",
+        "predicted": "receipt",
+        "confidence": 0.99,
+        "route": "auto",
+        "correct": true,
+        "elapsed_seconds": 83.81
+      },
+      {
+        "file": "img_mew74cla.jpg",
+        "expected": "receipt",
+        "predicted": "invoice",
+        "confidence": 0.99,
+        "route": "auto",
+        "correct": false,
+        "elapsed_seconds": 57.05
+      },
+      {
+        "file": "img_obkbsd7z.jpg",
+        "expected": "receipt",
+        "predicted": "invoice",
+        "confidence": 0.99,
+        "route": "auto",
+        "correct": false,
+        "elapsed_seconds": 72.77
+      },
+      {
+        "file": "img_r3xxmz3f.jpg",
+        "expected": "receipt",
+        "predicted": "receipt",
+        "confidence": 0.99,
+        "route": "auto",
+        "correct": true,
+        "elapsed_seconds": 77.59
+      },
+      {
+        "file": "img_rnbvfuf7.jpg",
+        "expected": "receipt",
+        "predicted": "receipt",
+        "confidence": 0.99,
+        "route": "auto",
+        "correct": true,
+        "elapsed_seconds": 44.66
+      },
+      {
+        "file": "img_vdujuxrm.jpg",
+        "expected": "receipt",
+        "predicted": "invoice",
+        "confidence": 0.99,
+        "route": "auto",
+        "correct": false,
+        "elapsed_seconds": 55.81
+      },
+      {
+        "file": "img_yw1fhp0h.jpg",
+        "expected": "receipt",
+        "predicted": "receipt",
+        "confidence": 1.0,
+        "route": "auto",
+        "correct": true,
+        "elapsed_seconds": 50.43
+      },
+      {
+        "file": "img_z5s3n4sz.jpg",
+        "expected": "receipt",
+        "predicted": "invoice",
+        "confidence": 0.99,
+        "route": "auto",
+        "correct": false,
+        "elapsed_seconds": 53.01
+      }
+    ]
+  }
+}

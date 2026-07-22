@@ -1,0 +1,1573 @@
+{
+  "moondream": {
+    "model": "moondream",
+    "total_files": 15,
+    "accuracy": 0.333,
+    "category_metrics": {
+      "other": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 1
+      },
+      "diagram_or_chart": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 1
+      },
+      "contract_or_form": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 1
+      },
+      "receipt": {
+        "precision": 0.5,
+        "recall": 1.0,
+        "f1": 0.667,
+        "support": 5
+      },
+      "handwritten_note": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 1
+      },
+      "invoice": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 1
+      },
+      "bank_statement": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 1
+      },
+      "id_document": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 1
+      },
+      "medical": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 1
+      },
+      "photo": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 1
+      },
+      "screenshot": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 1
+      }
+    },
+    "confusion_matrix": {
+      "other": {
+        "(failed)": 1
+      },
+      "diagram_or_chart": {
+        "(failed)": 1
+      },
+      "contract_or_form": {
+        "(failed)": 1
+      },
+      "receipt": {
+        "receipt": 5
+      },
+      "handwritten_note": {
+        "(failed)": 1
+      },
+      "invoice": {
+        "receipt": 1
+      },
+      "bank_statement": {
+        "receipt": 1
+      },
+      "id_document": {
+        "receipt": 1
+      },
+      "medical": {
+        "receipt": 1
+      },
+      "photo": {
+        "(failed)": 1
+      },
+      "screenshot": {
+        "receipt": 1
+      }
+    },
+    "route_vs_correctness": {
+      "failed": {
+        "correct": 0,
+        "incorrect": 5
+      },
+      "review": {
+        "correct": 5,
+        "incorrect": 5
+      }
+    },
+    "latency_seconds": {
+      "mean": 28.74,
+      "total": 431.17
+    },
+    "per_item": [
+      {
+        "file": "ambiguous_other.png",
+        "expected": "other",
+        "predicted": null,
+        "confidence": null,
+        "route": "failed",
+        "correct": false,
+        "elapsed_seconds": 26.66
+      },
+      {
+        "file": "chart_sales.png",
+        "expected": "diagram_or_chart",
+        "predicted": null,
+        "confidence": null,
+        "route": "failed",
+        "correct": false,
+        "elapsed_seconds": 33.0
+      },
+      {
+        "file": "contract_nda.pdf",
+        "expected": "contract_or_form",
+        "predicted": null,
+        "confidence": null,
+        "route": "failed",
+        "correct": false,
+        "elapsed_seconds": 24.54
+      },
+      {
+        "file": "drugstore_receipt (1).jpg",
+        "expected": "receipt",
+        "predicted": "receipt",
+        "confidence": 0.68,
+        "route": "review",
+        "correct": true,
+        "elapsed_seconds": 32.6
+      },
+      {
+        "file": "drugstore_receipt copy.jpg",
+        "expected": "receipt",
+        "predicted": "receipt",
+        "confidence": 0.67,
+        "route": "review",
+        "correct": true,
+        "elapsed_seconds": 14.12
+      },
+      {
+        "file": "drugstore_receipt.jpg",
+        "expected": "receipt",
+        "predicted": "receipt",
+        "confidence": 0.68,
+        "route": "review",
+        "correct": true,
+        "elapsed_seconds": 14.4
+      },
+      {
+        "file": "handwritten_note.png",
+        "expected": "handwritten_note",
+        "predicted": null,
+        "confidence": null,
+        "route": "failed",
+        "correct": false,
+        "elapsed_seconds": 34.67
+      },
+      {
+        "file": "invoice_acme.pdf",
+        "expected": "invoice",
+        "predicted": "receipt",
+        "confidence": 0.67,
+        "route": "review",
+        "correct": false,
+        "elapsed_seconds": 23.72
+      },
+      {
+        "file": "mock_bank_statement.pdf",
+        "expected": "bank_statement",
+        "predicted": "receipt",
+        "confidence": 0.67,
+        "route": "review",
+        "correct": false,
+        "elapsed_seconds": 22.43
+      },
+      {
+        "file": "mock_id_card.jpg",
+        "expected": "id_document",
+        "predicted": "receipt",
+        "confidence": 0.72,
+        "route": "review",
+        "correct": false,
+        "elapsed_seconds": 38.04
+      },
+      {
+        "file": "mock_medical_report.pdf",
+        "expected": "medical",
+        "predicted": "receipt",
+        "confidence": 0.67,
+        "route": "review",
+        "correct": false,
+        "elapsed_seconds": 24.83
+      },
+      {
+        "file": "photo_landscape.jpg",
+        "expected": "photo",
+        "predicted": null,
+        "confidence": null,
+        "route": "failed",
+        "correct": false,
+        "elapsed_seconds": 38.86
+      },
+      {
+        "file": "receipt_costco.jpg",
+        "expected": "receipt",
+        "predicted": "receipt",
+        "confidence": 0.67,
+        "route": "review",
+        "correct": true,
+        "elapsed_seconds": 23.63
+      },
+      {
+        "file": "receipt_heic_sample.heic",
+        "expected": "receipt",
+        "predicted": "receipt",
+        "confidence": 0.61,
+        "route": "review",
+        "correct": true,
+        "elapsed_seconds": 39.73
+      },
+      {
+        "file": "screenshot_app.png",
+        "expected": "screenshot",
+        "predicted": "receipt",
+        "confidence": 0.6,
+        "route": "review",
+        "correct": false,
+        "elapsed_seconds": 39.95
+      }
+    ]
+  },
+  "qwen2.5vl:3b": {
+    "model": "qwen2.5vl:3b",
+    "total_files": 15,
+    "accuracy": 0.333,
+    "category_metrics": {
+      "other": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 1
+      },
+      "diagram_or_chart": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 1
+      },
+      "contract_or_form": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 1
+      },
+      "receipt": {
+        "precision": 1.0,
+        "recall": 0.4,
+        "f1": 0.571,
+        "support": 5
+      },
+      "handwritten_note": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 1
+      },
+      "invoice": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 1
+      },
+      "bank_statement": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 1
+      },
+      "id_document": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 1
+      },
+      "medical": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 1
+      },
+      "photo": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 1
+      },
+      "screenshot": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 1
+      }
+    },
+    "confusion_matrix": {
+      "other": {
+        "other": 1
+      },
+      "diagram_or_chart": {
+        "diagram_or_chart": 1
+      },
+      "contract_or_form": {
+        "(failed)": 1
+      },
+      "receipt": {
+        "(failed)": 3,
+        "receipt": 2
+      },
+      "handwritten_note": {
+        "handwritten_note": 1
+      },
+      "invoice": {
+        "(failed)": 1
+      },
+      "bank_statement": {
+        "(failed)": 1
+      },
+      "id_document": {
+        "(failed)": 1
+      },
+      "medical": {
+        "(failed)": 1
+      },
+      "photo": {
+        "(failed)": 1
+      },
+      "screenshot": {
+        "(failed)": 1
+      }
+    },
+    "route_vs_correctness": {
+      "review": {
+        "correct": 1,
+        "incorrect": 0
+      },
+      "auto": {
+        "correct": 4,
+        "incorrect": 0
+      },
+      "failed": {
+        "correct": 0,
+        "incorrect": 10
+      }
+    },
+    "latency_seconds": {
+      "mean": 37.17,
+      "total": 557.52
+    },
+    "per_item": [
+      {
+        "file": "ambiguous_other.png",
+        "expected": "other",
+        "predicted": "other",
+        "confidence": 0.7,
+        "route": "review",
+        "correct": true,
+        "elapsed_seconds": 22.22
+      },
+      {
+        "file": "chart_sales.png",
+        "expected": "diagram_or_chart",
+        "predicted": "diagram_or_chart",
+        "confidence": 0.95,
+        "route": "auto",
+        "correct": true,
+        "elapsed_seconds": 18.27
+      },
+      {
+        "file": "contract_nda.pdf",
+        "expected": "contract_or_form",
+        "predicted": null,
+        "confidence": null,
+        "route": "failed",
+        "correct": false,
+        "elapsed_seconds": 45.03
+      },
+      {
+        "file": "drugstore_receipt (1).jpg",
+        "expected": "receipt",
+        "predicted": null,
+        "confidence": null,
+        "route": "failed",
+        "correct": false,
+        "elapsed_seconds": 45.02
+      },
+      {
+        "file": "drugstore_receipt copy.jpg",
+        "expected": "receipt",
+        "predicted": "receipt",
+        "confidence": 0.95,
+        "route": "auto",
+        "correct": true,
+        "elapsed_seconds": 42.65
+      },
+      {
+        "file": "drugstore_receipt.jpg",
+        "expected": "receipt",
+        "predicted": "receipt",
+        "confidence": 0.95,
+        "route": "auto",
+        "correct": true,
+        "elapsed_seconds": 5.14
+      },
+      {
+        "file": "handwritten_note.png",
+        "expected": "handwritten_note",
+        "predicted": "handwritten_note",
+        "confidence": 0.95,
+        "route": "auto",
+        "correct": true,
+        "elapsed_seconds": 18.97
+      },
+      {
+        "file": "invoice_acme.pdf",
+        "expected": "invoice",
+        "predicted": null,
+        "confidence": null,
+        "route": "failed",
+        "correct": false,
+        "elapsed_seconds": 45.02
+      },
+      {
+        "file": "mock_bank_statement.pdf",
+        "expected": "bank_statement",
+        "predicted": null,
+        "confidence": null,
+        "route": "failed",
+        "correct": false,
+        "elapsed_seconds": 45.03
+      },
+      {
+        "file": "mock_id_card.jpg",
+        "expected": "id_document",
+        "predicted": null,
+        "confidence": null,
+        "route": "failed",
+        "correct": false,
+        "elapsed_seconds": 45.03
+      },
+      {
+        "file": "mock_medical_report.pdf",
+        "expected": "medical",
+        "predicted": null,
+        "confidence": null,
+        "route": "failed",
+        "correct": false,
+        "elapsed_seconds": 45.03
+      },
+      {
+        "file": "photo_landscape.jpg",
+        "expected": "photo",
+        "predicted": null,
+        "confidence": null,
+        "route": "failed",
+        "correct": false,
+        "elapsed_seconds": 45.03
+      },
+      {
+        "file": "receipt_costco.jpg",
+        "expected": "receipt",
+        "predicted": null,
+        "confidence": null,
+        "route": "failed",
+        "correct": false,
+        "elapsed_seconds": 45.03
+      },
+      {
+        "file": "receipt_heic_sample.heic",
+        "expected": "receipt",
+        "predicted": null,
+        "confidence": null,
+        "route": "failed",
+        "correct": false,
+        "elapsed_seconds": 45.03
+      },
+      {
+        "file": "screenshot_app.png",
+        "expected": "screenshot",
+        "predicted": null,
+        "confidence": null,
+        "route": "failed",
+        "correct": false,
+        "elapsed_seconds": 45.03
+      }
+    ]
+  },
+  "minicpm-v:8b": {
+    "model": "minicpm-v:8b",
+    "total_files": 15,
+    "accuracy": 0.0,
+    "category_metrics": {
+      "other": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 1
+      },
+      "diagram_or_chart": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 1
+      },
+      "contract_or_form": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 1
+      },
+      "receipt": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 5
+      },
+      "handwritten_note": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 1
+      },
+      "invoice": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 1
+      },
+      "bank_statement": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 1
+      },
+      "id_document": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 1
+      },
+      "medical": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 1
+      },
+      "photo": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 1
+      },
+      "screenshot": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 1
+      }
+    },
+    "confusion_matrix": {
+      "other": {
+        "(failed)": 1
+      },
+      "diagram_or_chart": {
+        "(failed)": 1
+      },
+      "contract_or_form": {
+        "(failed)": 1
+      },
+      "receipt": {
+        "(failed)": 5
+      },
+      "handwritten_note": {
+        "(failed)": 1
+      },
+      "invoice": {
+        "(failed)": 1
+      },
+      "bank_statement": {
+        "(failed)": 1
+      },
+      "id_document": {
+        "(failed)": 1
+      },
+      "medical": {
+        "(failed)": 1
+      },
+      "photo": {
+        "(failed)": 1
+      },
+      "screenshot": {
+        "(failed)": 1
+      }
+    },
+    "route_vs_correctness": {
+      "failed": {
+        "correct": 0,
+        "incorrect": 15
+      }
+    },
+    "latency_seconds": {
+      "mean": 45.04,
+      "total": 675.58
+    },
+    "per_item": [
+      {
+        "file": "ambiguous_other.png",
+        "expected": "other",
+        "predicted": null,
+        "confidence": null,
+        "route": "failed",
+        "correct": false,
+        "elapsed_seconds": 45.08
+      },
+      {
+        "file": "chart_sales.png",
+        "expected": "diagram_or_chart",
+        "predicted": null,
+        "confidence": null,
+        "route": "failed",
+        "correct": false,
+        "elapsed_seconds": 45.05
+      },
+      {
+        "file": "contract_nda.pdf",
+        "expected": "contract_or_form",
+        "predicted": null,
+        "confidence": null,
+        "route": "failed",
+        "correct": false,
+        "elapsed_seconds": 45.03
+      },
+      {
+        "file": "drugstore_receipt (1).jpg",
+        "expected": "receipt",
+        "predicted": null,
+        "confidence": null,
+        "route": "failed",
+        "correct": false,
+        "elapsed_seconds": 45.03
+      },
+      {
+        "file": "drugstore_receipt copy.jpg",
+        "expected": "receipt",
+        "predicted": null,
+        "confidence": null,
+        "route": "failed",
+        "correct": false,
+        "elapsed_seconds": 45.04
+      },
+      {
+        "file": "drugstore_receipt.jpg",
+        "expected": "receipt",
+        "predicted": null,
+        "confidence": null,
+        "route": "failed",
+        "correct": false,
+        "elapsed_seconds": 45.03
+      },
+      {
+        "file": "handwritten_note.png",
+        "expected": "handwritten_note",
+        "predicted": null,
+        "confidence": null,
+        "route": "failed",
+        "correct": false,
+        "elapsed_seconds": 45.04
+      },
+      {
+        "file": "invoice_acme.pdf",
+        "expected": "invoice",
+        "predicted": null,
+        "confidence": null,
+        "route": "failed",
+        "correct": false,
+        "elapsed_seconds": 45.04
+      },
+      {
+        "file": "mock_bank_statement.pdf",
+        "expected": "bank_statement",
+        "predicted": null,
+        "confidence": null,
+        "route": "failed",
+        "correct": false,
+        "elapsed_seconds": 45.03
+      },
+      {
+        "file": "mock_id_card.jpg",
+        "expected": "id_document",
+        "predicted": null,
+        "confidence": null,
+        "route": "failed",
+        "correct": false,
+        "elapsed_seconds": 45.03
+      },
+      {
+        "file": "mock_medical_report.pdf",
+        "expected": "medical",
+        "predicted": null,
+        "confidence": null,
+        "route": "failed",
+        "correct": false,
+        "elapsed_seconds": 45.03
+      },
+      {
+        "file": "photo_landscape.jpg",
+        "expected": "photo",
+        "predicted": null,
+        "confidence": null,
+        "route": "failed",
+        "correct": false,
+        "elapsed_seconds": 45.03
+      },
+      {
+        "file": "receipt_costco.jpg",
+        "expected": "receipt",
+        "predicted": null,
+        "confidence": null,
+        "route": "failed",
+        "correct": false,
+        "elapsed_seconds": 45.05
+      },
+      {
+        "file": "receipt_heic_sample.heic",
+        "expected": "receipt",
+        "predicted": null,
+        "confidence": null,
+        "route": "failed",
+        "correct": false,
+        "elapsed_seconds": 45.03
+      },
+      {
+        "file": "screenshot_app.png",
+        "expected": "screenshot",
+        "predicted": null,
+        "confidence": null,
+        "route": "failed",
+        "correct": false,
+        "elapsed_seconds": 45.04
+      }
+    ]
+  },
+  "qwen2.5vl:3b (90s timeout)": {
+    "model": "qwen2.5vl:3b",
+    "total_files": 15,
+    "accuracy": 0.6,
+    "category_metrics": {
+      "other": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 1
+      },
+      "diagram_or_chart": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 1
+      },
+      "contract_or_form": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 1
+      },
+      "receipt": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 5
+      },
+      "handwritten_note": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 1
+      },
+      "invoice": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 1
+      },
+      "bank_statement": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 1
+      },
+      "id_document": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 1
+      },
+      "medical": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 1
+      },
+      "photo": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 1
+      },
+      "screenshot": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 1
+      }
+    },
+    "confusion_matrix": {
+      "other": {
+        "other": 1
+      },
+      "diagram_or_chart": {
+        "diagram_or_chart": 1
+      },
+      "contract_or_form": {
+        "(failed)": 1
+      },
+      "receipt": {
+        "receipt": 5
+      },
+      "handwritten_note": {
+        "handwritten_note": 1
+      },
+      "invoice": {
+        "(failed)": 1
+      },
+      "bank_statement": {
+        "(failed)": 1
+      },
+      "id_document": {
+        "(failed)": 1
+      },
+      "medical": {
+        "(failed)": 1
+      },
+      "photo": {
+        "(failed)": 1
+      },
+      "screenshot": {
+        "screenshot": 1
+      }
+    },
+    "route_vs_correctness": {
+      "review": {
+        "correct": 1,
+        "incorrect": 0
+      },
+      "auto": {
+        "correct": 8,
+        "incorrect": 0
+      },
+      "failed": {
+        "correct": 0,
+        "incorrect": 6
+      }
+    },
+    "latency_seconds": {
+      "mean": 56.05,
+      "total": 840.79
+    },
+    "per_item": [
+      {
+        "file": "ambiguous_other.png",
+        "expected": "other",
+        "predicted": "other",
+        "confidence": 0.5,
+        "route": "review",
+        "correct": true,
+        "elapsed_seconds": 38.15
+      },
+      {
+        "file": "chart_sales.png",
+        "expected": "diagram_or_chart",
+        "predicted": "diagram_or_chart",
+        "confidence": 0.95,
+        "route": "auto",
+        "correct": true,
+        "elapsed_seconds": 25.55
+      },
+      {
+        "file": "contract_nda.pdf",
+        "expected": "contract_or_form",
+        "predicted": null,
+        "confidence": null,
+        "route": "failed",
+        "correct": false,
+        "elapsed_seconds": 90.04
+      },
+      {
+        "file": "drugstore_receipt (1).jpg",
+        "expected": "receipt",
+        "predicted": "receipt",
+        "confidence": 0.95,
+        "route": "auto",
+        "correct": true,
+        "elapsed_seconds": 72.86
+      },
+      {
+        "file": "drugstore_receipt copy.jpg",
+        "expected": "receipt",
+        "predicted": "receipt",
+        "confidence": 0.95,
+        "route": "auto",
+        "correct": true,
+        "elapsed_seconds": 7.03
+      },
+      {
+        "file": "drugstore_receipt.jpg",
+        "expected": "receipt",
+        "predicted": "receipt",
+        "confidence": 0.99,
+        "route": "auto",
+        "correct": true,
+        "elapsed_seconds": 6.95
+      },
+      {
+        "file": "handwritten_note.png",
+        "expected": "handwritten_note",
+        "predicted": "handwritten_note",
+        "confidence": 1.0,
+        "route": "auto",
+        "correct": true,
+        "elapsed_seconds": 22.91
+      },
+      {
+        "file": "invoice_acme.pdf",
+        "expected": "invoice",
+        "predicted": null,
+        "confidence": null,
+        "route": "failed",
+        "correct": false,
+        "elapsed_seconds": 90.03
+      },
+      {
+        "file": "mock_bank_statement.pdf",
+        "expected": "bank_statement",
+        "predicted": null,
+        "confidence": null,
+        "route": "failed",
+        "correct": false,
+        "elapsed_seconds": 90.05
+      },
+      {
+        "file": "mock_id_card.jpg",
+        "expected": "id_document",
+        "predicted": null,
+        "confidence": null,
+        "route": "failed",
+        "correct": false,
+        "elapsed_seconds": 90.04
+      },
+      {
+        "file": "mock_medical_report.pdf",
+        "expected": "medical",
+        "predicted": null,
+        "confidence": null,
+        "route": "failed",
+        "correct": false,
+        "elapsed_seconds": 90.12
+      },
+      {
+        "file": "photo_landscape.jpg",
+        "expected": "photo",
+        "predicted": null,
+        "confidence": null,
+        "route": "failed",
+        "correct": false,
+        "elapsed_seconds": 90.03
+      },
+      {
+        "file": "receipt_costco.jpg",
+        "expected": "receipt",
+        "predicted": "receipt",
+        "confidence": 0.95,
+        "route": "auto",
+        "correct": true,
+        "elapsed_seconds": 70.89
+      },
+      {
+        "file": "receipt_heic_sample.heic",
+        "expected": "receipt",
+        "predicted": "receipt",
+        "confidence": 0.95,
+        "route": "auto",
+        "correct": true,
+        "elapsed_seconds": 22.27
+      },
+      {
+        "file": "screenshot_app.png",
+        "expected": "screenshot",
+        "predicted": "screenshot",
+        "confidence": 0.95,
+        "route": "auto",
+        "correct": true,
+        "elapsed_seconds": 33.88
+      }
+    ]
+  },
+  "minicpm-v:8b (90s timeout)": {
+    "model": "minicpm-v:8b",
+    "total_files": 15,
+    "accuracy": 0.333,
+    "category_metrics": {
+      "other": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 1
+      },
+      "photo": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 1
+      },
+      "diagram_or_chart": {
+        "precision": 0.5,
+        "recall": 1.0,
+        "f1": 0.667,
+        "support": 1
+      },
+      "contract_or_form": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 1
+      },
+      "receipt": {
+        "precision": 1.0,
+        "recall": 0.6,
+        "f1": 0.75,
+        "support": 5
+      },
+      "handwritten_note": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 1
+      },
+      "invoice": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 1
+      },
+      "bank_statement": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 1
+      },
+      "id_document": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 1
+      },
+      "medical": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 1
+      },
+      "screenshot": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 1
+      }
+    },
+    "confusion_matrix": {
+      "other": {
+        "photo": 1
+      },
+      "diagram_or_chart": {
+        "diagram_or_chart": 1
+      },
+      "contract_or_form": {
+        "(failed)": 1
+      },
+      "receipt": {
+        "(failed)": 2,
+        "receipt": 3
+      },
+      "handwritten_note": {
+        "diagram_or_chart": 1
+      },
+      "invoice": {
+        "(failed)": 1
+      },
+      "bank_statement": {
+        "(failed)": 1
+      },
+      "id_document": {
+        "id_document": 1
+      },
+      "medical": {
+        "(failed)": 1
+      },
+      "photo": {
+        "(failed)": 1
+      },
+      "screenshot": {
+        "(failed)": 1
+      }
+    },
+    "route_vs_correctness": {
+      "auto": {
+        "correct": 5,
+        "incorrect": 2
+      },
+      "failed": {
+        "correct": 0,
+        "incorrect": 8
+      }
+    },
+    "latency_seconds": {
+      "mean": 75.39,
+      "total": 1130.92
+    },
+    "per_item": [
+      {
+        "file": "ambiguous_other.png",
+        "expected": "other",
+        "predicted": "photo",
+        "confidence": 0.8,
+        "route": "auto",
+        "correct": false,
+        "elapsed_seconds": 72.87
+      },
+      {
+        "file": "chart_sales.png",
+        "expected": "diagram_or_chart",
+        "predicted": "diagram_or_chart",
+        "confidence": 0.95,
+        "route": "auto",
+        "correct": true,
+        "elapsed_seconds": 53.99
+      },
+      {
+        "file": "contract_nda.pdf",
+        "expected": "contract_or_form",
+        "predicted": null,
+        "confidence": null,
+        "route": "failed",
+        "correct": false,
+        "elapsed_seconds": 90.04
+      },
+      {
+        "file": "drugstore_receipt (1).jpg",
+        "expected": "receipt",
+        "predicted": null,
+        "confidence": null,
+        "route": "failed",
+        "correct": false,
+        "elapsed_seconds": 90.08
+      },
+      {
+        "file": "drugstore_receipt copy.jpg",
+        "expected": "receipt",
+        "predicted": "receipt",
+        "confidence": 0.95,
+        "route": "auto",
+        "correct": true,
+        "elapsed_seconds": 55.96
+      },
+      {
+        "file": "drugstore_receipt.jpg",
+        "expected": "receipt",
+        "predicted": "receipt",
+        "confidence": 0.95,
+        "route": "auto",
+        "correct": true,
+        "elapsed_seconds": 16.96
+      },
+      {
+        "file": "handwritten_note.png",
+        "expected": "handwritten_note",
+        "predicted": "diagram_or_chart",
+        "confidence": 0.9,
+        "route": "auto",
+        "correct": false,
+        "elapsed_seconds": 47.71
+      },
+      {
+        "file": "invoice_acme.pdf",
+        "expected": "invoice",
+        "predicted": null,
+        "confidence": null,
+        "route": "failed",
+        "correct": false,
+        "elapsed_seconds": 90.03
+      },
+      {
+        "file": "mock_bank_statement.pdf",
+        "expected": "bank_statement",
+        "predicted": null,
+        "confidence": null,
+        "route": "failed",
+        "correct": false,
+        "elapsed_seconds": 90.04
+      },
+      {
+        "file": "mock_id_card.jpg",
+        "expected": "id_document",
+        "predicted": "id_document",
+        "confidence": 0.95,
+        "route": "auto",
+        "correct": true,
+        "elapsed_seconds": 88.78
+      },
+      {
+        "file": "mock_medical_report.pdf",
+        "expected": "medical",
+        "predicted": null,
+        "confidence": null,
+        "route": "failed",
+        "correct": false,
+        "elapsed_seconds": 90.06
+      },
+      {
+        "file": "photo_landscape.jpg",
+        "expected": "photo",
+        "predicted": null,
+        "confidence": null,
+        "route": "failed",
+        "correct": false,
+        "elapsed_seconds": 90.11
+      },
+      {
+        "file": "receipt_costco.jpg",
+        "expected": "receipt",
+        "predicted": null,
+        "confidence": null,
+        "route": "failed",
+        "correct": false,
+        "elapsed_seconds": 90.05
+      },
+      {
+        "file": "receipt_heic_sample.heic",
+        "expected": "receipt",
+        "predicted": "receipt",
+        "confidence": 0.9,
+        "route": "auto",
+        "correct": true,
+        "elapsed_seconds": 74.2
+      },
+      {
+        "file": "screenshot_app.png",
+        "expected": "screenshot",
+        "predicted": null,
+        "confidence": null,
+        "route": "failed",
+        "correct": false,
+        "elapsed_seconds": 90.06
+      }
+    ]
+  },
+  "moondream (rerun)": {
+    "model": "moondream",
+    "total_files": 15,
+    "accuracy": 0.267,
+    "category_metrics": {
+      "other": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 1
+      },
+      "diagram_or_chart": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 1
+      },
+      "contract_or_form": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 1
+      },
+      "receipt": {
+        "precision": 0.5,
+        "recall": 0.8,
+        "f1": 0.615,
+        "support": 5
+      },
+      "handwritten_note": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 1
+      },
+      "invoice": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 1
+      },
+      "bank_statement": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 1
+      },
+      "id_document": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 1
+      },
+      "photo": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 1
+      },
+      "medical": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 1
+      },
+      "receipt costco": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 0
+      },
+      "screenshot": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 1
+      }
+    },
+    "confusion_matrix": {
+      "other": {
+        "(failed)": 1
+      },
+      "diagram_or_chart": {
+        "(failed)": 1
+      },
+      "contract_or_form": {
+        "(failed)": 1
+      },
+      "receipt": {
+        "receipt": 4,
+        "receipt costco": 1
+      },
+      "handwritten_note": {
+        "(failed)": 1
+      },
+      "invoice": {
+        "receipt": 1
+      },
+      "bank_statement": {
+        "receipt": 1
+      },
+      "id_document": {
+        "photo": 1
+      },
+      "medical": {
+        "receipt": 1
+      },
+      "photo": {
+        "(failed)": 1
+      },
+      "screenshot": {
+        "receipt": 1
+      }
+    },
+    "route_vs_correctness": {
+      "failed": {
+        "correct": 0,
+        "incorrect": 5
+      },
+      "review": {
+        "correct": 4,
+        "incorrect": 5
+      },
+      "auto": {
+        "correct": 0,
+        "incorrect": 1
+      }
+    },
+    "latency_seconds": {
+      "mean": 27.71,
+      "total": 415.68
+    },
+    "per_item": [
+      {
+        "file": "ambiguous_other.png",
+        "expected": "other",
+        "predicted": null,
+        "confidence": null,
+        "route": "failed",
+        "correct": false,
+        "elapsed_seconds": 28.87
+      },
+      {
+        "file": "chart_sales.png",
+        "expected": "diagram_or_chart",
+        "predicted": null,
+        "confidence": null,
+        "route": "failed",
+        "correct": false,
+        "elapsed_seconds": 39.56
+      },
+      {
+        "file": "contract_nda.pdf",
+        "expected": "contract_or_form",
+        "predicted": null,
+        "confidence": null,
+        "route": "failed",
+        "correct": false,
+        "elapsed_seconds": 26.16
+      },
+      {
+        "file": "drugstore_receipt (1).jpg",
+        "expected": "receipt",
+        "predicted": "receipt",
+        "confidence": 0.68,
+        "route": "review",
+        "correct": true,
+        "elapsed_seconds": 22.99
+      },
+      {
+        "file": "drugstore_receipt copy.jpg",
+        "expected": "receipt",
+        "predicted": "receipt",
+        "confidence": 0.65,
+        "route": "review",
+        "correct": true,
+        "elapsed_seconds": 16.82
+      },
+      {
+        "file": "drugstore_receipt.jpg",
+        "expected": "receipt",
+        "predicted": "receipt",
+        "confidence": 0.67,
+        "route": "review",
+        "correct": true,
+        "elapsed_seconds": 17.33
+      },
+      {
+        "file": "handwritten_note.png",
+        "expected": "handwritten_note",
+        "predicted": null,
+        "confidence": null,
+        "route": "failed",
+        "correct": false,
+        "elapsed_seconds": 24.05
+      },
+      {
+        "file": "invoice_acme.pdf",
+        "expected": "invoice",
+        "predicted": "receipt",
+        "confidence": 0.66,
+        "route": "review",
+        "correct": false,
+        "elapsed_seconds": 28.44
+      },
+      {
+        "file": "mock_bank_statement.pdf",
+        "expected": "bank_statement",
+        "predicted": "receipt",
+        "confidence": 0.68,
+        "route": "review",
+        "correct": false,
+        "elapsed_seconds": 26.08
+      },
+      {
+        "file": "mock_id_card.jpg",
+        "expected": "id_document",
+        "predicted": "photo",
+        "confidence": 0.8,
+        "route": "auto",
+        "correct": false,
+        "elapsed_seconds": 24.38
+      },
+      {
+        "file": "mock_medical_report.pdf",
+        "expected": "medical",
+        "predicted": "receipt",
+        "confidence": 0.67,
+        "route": "review",
+        "correct": false,
+        "elapsed_seconds": 25.48
+      },
+      {
+        "file": "photo_landscape.jpg",
+        "expected": "photo",
+        "predicted": null,
+        "confidence": null,
+        "route": "failed",
+        "correct": false,
+        "elapsed_seconds": 25.5
+      },
+      {
+        "file": "receipt_costco.jpg",
+        "expected": "receipt",
+        "predicted": "receipt costco",
+        "confidence": 0.67,
+        "route": "review",
+        "correct": false,
+        "elapsed_seconds": 37.98
+      },
+      {
+        "file": "receipt_heic_sample.heic",
+        "expected": "receipt",
+        "predicted": "receipt",
+        "confidence": 0.6,
+        "route": "review",
+        "correct": true,
+        "elapsed_seconds": 34.08
+      },
+      {
+        "file": "screenshot_app.png",
+        "expected": "screenshot",
+        "predicted": "receipt",
+        "confidence": 0.67,
+        "route": "review",
+        "correct": false,
+        "elapsed_seconds": 37.97
+      }
+    ]
+  }
+}
