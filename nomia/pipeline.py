@@ -254,10 +254,16 @@ def _build_plan_inner(
         outcome = outcome_by_path[record.path]
         result = outcome.result
         dump_rel = resolve_collision(dump_relative_path(record.path.name), dest_index) if cfg.keep_dump_copies else None
+        reason = result.reason
+        if named.kept_original_name:
+            # Visible in the preview UI and the Excel report's Reason column (invariant #3:
+            # every decision is explained) - the file was organized but deliberately not renamed.
+            note = "kept original filename (already descriptive)"
+            reason = f"{reason} | {note}" if reason else note
         items.append(PlannedItem(
             record=record, route=outcome.route, dest_relative_path=named.dest_relative_path,
             dump_relative_path=dump_rel, category=result.category, subcategory=result.subcategory,
-            description=result.description, confidence=result.confidence, reason=result.reason,
+            description=result.description, confidence=result.confidence, reason=reason,
             raw_model_response=outcome.raw_response, naming_index=named.naming_index,
             naming_date_source=named.naming_date_source,
         ))

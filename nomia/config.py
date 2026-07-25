@@ -192,6 +192,16 @@ class NomiaConfig(BaseModel):
     fastpath: FastPathConfig = Field(default_factory=FastPathConfig)
 
     sweep_other_files: bool = False
+    keep_well_named_originals: bool = True
+    """When a file's existing name already carries what the naming template would say about
+    it (category and/or description words, the date), skip the rename and keep the original
+    filename - the file is still organized into its normal destination folder. Scored by
+    naming.original_name_score; see well_named_min_score."""
+    well_named_min_score: float = 0.55
+    """Minimum original_name_score ([0,1]) for an existing filename to be kept. At the
+    default, a name needs roughly the category word plus a matching year, or most of the
+    proposed description, before it is considered already-descriptive. Camera/scanner names
+    (IMG_2041, scan0001) score ~0 and always get renamed."""
     max_filename_bytes: int = 255
     pdf_pages_to_render: int = Field(default=1, ge=1, le=2)
     reverse_geocode_enabled: bool = False

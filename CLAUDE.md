@@ -164,6 +164,14 @@ This `{index}` mechanism is distinct from the collision-suffix mechanism in inva
 is a semantic part of the naming template the user chose; the collision suffix is a purely
 mechanical fallback for when two different planned names would otherwise land on the same path.
 
+**Already-well-named files** (`keep_well_named_originals`, default on): if a file's existing name
+already carries what the template would say about it — scored by `naming.original_name_score`
+(0.5 × specific-description-word coverage + 0.3 × category word + 0.2 × year; a bare category
+word like `invoice (1).pdf` tops out at 0.3 and is treated as generic) — the rename is skipped:
+the file still moves to the template's folder, keeps its sanitized original filename, stays out
+of `{index}` grouping, and still goes through collision resolution. The decision is visible in
+the item's Reason ("kept original filename") per invariant #3.
+
 ## Stack and workflow
 
 - Python 3.11+, dependency-managed with `uv` (`pyproject.toml` is the source of truth;

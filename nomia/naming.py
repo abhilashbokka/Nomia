@@ -189,6 +189,67 @@ def resolve_template(template: str, ctx: NamingContext) -> str:
 
 
 # --------------------------------------------------------------------------------------------
+# "Already well named" detection
+# --------------------------------------------------------------------------------------------
+
+_CATEGORY_FILLER_WORDS = {"or", "of", "and", "the", "a"}
+_NAME_TOKEN_RE = re.compile(r"[a-z]+|\d+")
+
+
+def _name_tokens(text: str) -> set[str]:
+    """Lowercased, ASCII-transliterated alphanumeric tokens, split at letter/digit
+    boundaries so "Costco2026" yields both "costco" and "2026"."""
+    lowered = unicodedata.normalize("NFKD", text.lower()).encode("ascii", "ignore").decode("ascii")
+    return set(_NAME_TOKEN_RE.findall(lowered))
+
+
+def original_name_score(original_stem: str, ctx: NamingContext) -> tuple[float, list[str]]:
+    """How much of the proposed name's semantic content the existing filename already
+    carries, in [0, 1], with fixed absolute weights:
+
+      0.5 x coverage of the description's *specific* words (description tokens minus the
+            category's own words - "costco", "wholesale", not the bare "receipt")
+      0.3 x category word present
+      0.2 x the file's year present (also detected inside digit runs like "20260314")
+
+    Deliberately NOT renormalized: a name that only repeats the category word ("invoice.pdf",
+    "invoice (1).pdf") tops out at 0.3 and is treated as generic - a genuinely descriptive
+    name carries content beyond the category. Camera/scanner names (IMG_2041, scan0001)
+    score ~0. Pure function; the keep/rename decision (threshold, config gate) belongs to
+    the caller."""
+    orig_tokens = _name_tokens(original_stem)
+    if not orig_tokens:
+        return 0.0, []
+
+    evidence: list[str] = []
+    score = 0.0
+
+    category_tokens = {t for t in _name_tokens(ctx.category) if t not in _CATEGORY_FILLER_WORDS}
+    specific_desc_tokens = _name_tokens(ctx.description) - category_tokens
+    if specific_desc_tokens:
+        matched = specific_desc_tokens & orig_tokens
+        score += 0.5 * (len(matched) / len(specific_desc_tokens))
+        if matched:
+            evidence.append(f"description words: {', '.join(sorted(matched))}")
+
+    matched_cat = category_tokens & orig_tokens
+    if matched_cat:
+        score += 0.3
+        evidence.append(f"category word: {', '.join(sorted(matched_cat))}")
+
+    if ctx.date is not None:
+        year = f"{ctx.date.year:04d}"
+        year_hit = any(
+            t == year or (t.isdigit() and len(t) >= 6 and year in t) for t in orig_tokens
+        )
+        if year_hit:
+            score += 0.2
+            evidence.append(f"year {year}")
+
+    return score, evidence
+
+
+# --------------------------------------------------------------------------------------------
 # Destination collision tracking
 # --------------------------------------------------------------------------------------------
 
@@ -275,6 +336,9 @@ class NamedItem:
     naming_index: int | None
     naming_date_source: str
     transform_log: list[str] = field(default_factory=list)
+    kept_original_name: bool = False
+    """True when the existing filename scored as already-descriptive and was kept verbatim
+    (sanitized) instead of the template rendering - see original_name_score."""
 
 
 def _category_folder_value(category_key: str, cfg: NomiaConfig) -> str:
@@ -326,9 +390,26 @@ def plan_organized_names(
 
     base_keys = [resolve_template(template, ctx) for _candidate, ctx, _log, _src in prepared]
 
+    # A file whose existing name already says what the template would say keeps that name
+    # (still organized into the template's folder). Decided before {index} grouping so kept
+    # files neither consume nor shift anyone's index; collision resolution below still
+    # applies to them like everything else (invariant #1).
+    kept_flags = [False] * len(prepared)
+    if cfg.keep_well_named_originals:
+        for i, (candidate, ctx, transform_log, _src) in enumerate(prepared):
+            score, evidence = original_name_score(ctx.original_stem, ctx)
+            if score >= cfg.well_named_min_score:
+                kept_flags[i] = True
+                detail = f"score {score:.2f}" + (f" ({'; '.join(evidence)})" if evidence else "")
+                transform_log.append(f"kept original filename - already descriptive: {detail}")
+                logger.info(
+                    "Keeping original filename for %s (%s).", candidate.record.path.name, detail,
+                )
+
     groups: dict[str, list[int]] = {}
     for i, key in enumerate(base_keys):
-        groups.setdefault(key, []).append(i)
+        if not kept_flags[i]:
+            groups.setdefault(key, []).append(i)
 
     index_str_by_position: dict[int, str | None] = {}
     for key, positions in groups.items():
@@ -359,9 +440,32 @@ def plan_organized_names(
     order = sorted(range(len(prepared)), key=lambda i: str(prepared[i][0].record.path).lower())
     for pos in order:
         candidate, ctx, transform_log, date_source = prepared[pos]
+        ext = candidate.record.path.suffix
+
+        if kept_flags[pos]:
+            # Original filename, template's folder: the rendered base decides WHERE the file
+            # lives (so foldered templates like {category}/{yyyy}/... keep working); only the
+            # final name component is preserved from the source file.
+            parent = Path(base_keys[pos]).parent if base_keys[pos] else Path(".")
+            kept_name = truncate_filename(
+                sanitize_original(candidate.record.path.stem), ext, cfg.max_filename_bytes,
+            )
+            full_rel_path = parent / kept_name if parent != Path(".") else Path(kept_name)
+            resolved_path = resolve_collision(full_rel_path, dest_index)
+            results.append(
+                NamedItem(
+                    candidate=candidate,
+                    dest_relative_path=resolved_path,
+                    naming_index=None,
+                    naming_date_source=date_source,
+                    transform_log=transform_log,
+                    kept_original_name=True,
+                )
+            )
+            continue
+
         ctx.index_str = index_str_by_position[pos]
         rendered = resolve_template(template, ctx)
-        ext = candidate.record.path.suffix
         rel_path = Path(rendered) if rendered else Path(sanitize_original(candidate.record.path.stem))
         stem = rel_path.name
         truncated_name = truncate_filename(stem, ext, cfg.max_filename_bytes)

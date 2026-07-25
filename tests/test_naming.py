@@ -237,3 +237,135 @@ def test_special_bucket_paths_bypass_naming_template():
     assert unsorted_relative_path("weird:name?.pdf") == Path("_Unsorted/weirdname.pdf")
     assert other_relative_path("archive.zip") == Path("_Other/archive.zip")
     assert dump_relative_path("IMG_0001.jpg") == Path("_dump/IMG_0001.jpg")
+
+
+# --------------------------------------------------------------------------------------------
+# "Already well named" detection (keep_well_named_originals)
+# --------------------------------------------------------------------------------------------
+
+def _ctx(category="receipt", description="costco-wholesale-receipt", date=datetime(2026, 3, 14)):
+    from nomia.naming import NamingContext
+    return NamingContext(
+        category=category, subcategory=None, description=description,
+        original_stem="", index_str=None, date=date, confidence=0.9,
+    )
+
+
+def test_original_name_score_descriptive_name_scores_high():
+    from nomia.naming import original_name_score
+    score, evidence = original_name_score("Costco-Receipt-2026-03", _ctx())
+    assert score >= 0.7
+    assert any("costco" in e for e in evidence)
+    assert any("2026" in e for e in evidence)
+
+
+def test_original_name_score_generic_names_score_low():
+    from nomia.naming import original_name_score
+    assert original_name_score("IMG_2041", _ctx())[0] == 0.0
+    assert original_name_score("scan0001", _ctx())[0] == 0.0
+    # Bare category word is generic, not descriptive - tops out at the 0.3 category weight.
+    assert original_name_score("invoice (1)", _ctx(category="invoice", description="invoice"))[0] <= 0.3
+
+
+def test_original_name_score_finds_year_inside_digit_run():
+    from nomia.naming import original_name_score
+    score, evidence = original_name_score("costco_20260314", _ctx())
+    assert any("2026" in e for e in evidence)
+    # description word (0.25) + year (0.2) but no category word: descriptive-ish yet below
+    # the default keep threshold - "costco_20260314" gains from a proper rename.
+    assert 0.4 <= score < 0.55
+
+
+def test_plan_keeps_well_named_original_and_renames_generic(tmp_path):
+    cfg = NomiaConfig()  # keep_well_named_originals defaults to True
+    records = [
+        _record("Costco-Receipt-2026-03.pdf", created_at=datetime(2026, 3, 14),
+                path=Path("/source/Costco-Receipt-2026-03.pdf")),
+        _record("IMG_2041.pdf", created_at=datetime(2026, 3, 15), path=Path("/source/IMG_2041.pdf")),
+    ]
+    candidates = [
+        NamingCandidate(record=r, category_key="receipt", subcategory=None,
+                        raw_description="costco-wholesale-receipt", confidence=0.9)
+        for r in records
+    ]
+
+    named = plan_organized_names(candidates, cfg, DestinationIndex(tmp_path))
+    by_source = {i.candidate.record.path.name: i for i in named}
+
+    kept = by_source["Costco-Receipt-2026-03.pdf"]
+    assert kept.kept_original_name is True
+    assert kept.dest_relative_path.name == "Costco-Receipt-2026-03.pdf"
+    assert kept.naming_index is None
+    assert any("kept original filename" in entry for entry in kept.transform_log)
+
+    renamed = by_source["IMG_2041.pdf"]
+    assert renamed.kept_original_name is False
+    assert renamed.dest_relative_path.name.startswith("receipt_2026-03-15")
+
+
+def test_plan_keep_toggle_off_renames_everything(tmp_path):
+    cfg = NomiaConfig()
+    cfg.keep_well_named_originals = False
+    record = _record("Costco-Receipt-2026-03.pdf", created_at=datetime(2026, 3, 14),
+                     path=Path("/source/Costco-Receipt-2026-03.pdf"))
+    candidate = NamingCandidate(record=record, category_key="receipt", subcategory=None,
+                                raw_description="costco-wholesale-receipt", confidence=0.9)
+
+    named = plan_organized_names([candidate], cfg, DestinationIndex(tmp_path))
+    assert named[0].kept_original_name is False
+    assert named[0].dest_relative_path.name != "Costco-Receipt-2026-03.pdf"
+
+
+def test_kept_original_lands_in_the_templates_folder(tmp_path):
+    cfg = NomiaConfig()
+    cfg.naming_preset_key = "foldered_category_year"  # "{category}/{yyyy}/{description}"
+    record = _record("Chase-Bank-Statement-2026-01.pdf", created_at=datetime(2026, 1, 31),
+                     path=Path("/source/Chase-Bank-Statement-2026-01.pdf"))
+    candidate = NamingCandidate(record=record, category_key="bank_statement", subcategory=None,
+                                raw_description="chase-bank-statement", confidence=0.9)
+
+    named = plan_organized_names([candidate], cfg, DestinationIndex(tmp_path))
+    assert named[0].kept_original_name is True
+    # Folder comes from the template, filename from the source.
+    assert named[0].dest_relative_path == Path("bank_statement/2026/Chase-Bank-Statement-2026-01.pdf")
+
+
+def test_two_kept_originals_with_same_name_never_collide(tmp_path):
+    cfg = NomiaConfig()
+    records = [
+        _record("Costco-Receipt-2026-03.pdf", created_at=datetime(2026, 3, 14),
+                path=Path("/source/a/Costco-Receipt-2026-03.pdf")),
+        _record("Costco-Receipt-2026-03.pdf", created_at=datetime(2026, 3, 20),
+                path=Path("/source/b/Costco-Receipt-2026-03.pdf")),
+    ]
+    candidates = [
+        NamingCandidate(record=r, category_key="receipt", subcategory=None,
+                        raw_description="costco-wholesale-receipt", confidence=0.9)
+        for r in records
+    ]
+
+    named = plan_organized_names(candidates, cfg, DestinationIndex(tmp_path))
+    paths = [str(i.dest_relative_path) for i in named]
+    assert len(set(paths)) == 2
+    assert any(p.endswith("__2.pdf") for p in paths)  # mechanical collision suffix, never overwrite
+
+
+def test_kept_files_do_not_consume_index_slots(tmp_path):
+    cfg = NomiaConfig()  # default template has {index}
+    records = [
+        _record("Costco-Receipt-2026-03.pdf", created_at=datetime(2026, 3, 14, 8, 0),
+                path=Path("/source/Costco-Receipt-2026-03.pdf")),
+        _record("IMG_1.pdf", created_at=datetime(2026, 3, 14, 9, 0), path=Path("/source/IMG_1.pdf")),
+        _record("IMG_2.pdf", created_at=datetime(2026, 3, 14, 10, 0), path=Path("/source/IMG_2.pdf")),
+    ]
+    candidates = [
+        NamingCandidate(record=r, category_key="receipt", subcategory=None,
+                        raw_description="costco-wholesale-receipt", confidence=0.9)
+        for r in records
+    ]
+
+    named = plan_organized_names(candidates, cfg, DestinationIndex(tmp_path))
+    by_source = {i.candidate.record.path.name: i for i in named}
+    assert by_source["Costco-Receipt-2026-03.pdf"].kept_original_name is True
+    # The two generic files group among themselves: indexes 1..2, not 1..3.
+    assert {by_source["IMG_1.pdf"].naming_index, by_source["IMG_2.pdf"].naming_index} == {1, 2}

@@ -146,6 +146,8 @@ export function renderToggles() {
   document.getElementById("sweep-other-toggle").checked = !!state.config.sweep_other_files;
   const fastpathSelect = document.getElementById("fastpath-mode-select");
   if (fastpathSelect && state.config.fastpath) fastpathSelect.value = state.config.fastpath.mode;
+  const keepWellNamed = document.getElementById("keep-wellnamed-toggle");
+  if (keepWellNamed) keepWellNamed.checked = !!state.config.keep_well_named_originals;
 }
 
 export function renderDestination() {
