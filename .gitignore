@@ -226,3 +226,6 @@ __marimo__/
 *.sqlite3
 *.sqlite3-wal
 *.sqlite3-shm
+
+# Private research workspace (papers, drafts, idea folders) - not part of the app
+/research/

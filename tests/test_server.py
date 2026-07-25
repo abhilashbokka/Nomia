@@ -44,7 +44,7 @@ def _wait_for_job(client, path, timeout=5.0):
 
 
 def test_health(client, mocker):
-    mocker.patch("nomia.classify.check_model_available", return_value=True)
+    mocker.patch("nomia.pipeline.check_model_available", return_value=True)
     resp = client.get("/api/health")
     assert resp.status_code == 200
     assert resp.json()["status"] == "ok"
@@ -96,7 +96,7 @@ def test_full_scan_preview_apply_undo_cycle(client, tmp_path, mocker):
     Image.new("RGB", (20, 20)).save(source_dir / "photo.jpg")
     dest_dir = tmp_path / "dest"
 
-    mocker.patch("nomia.classify.check_model_available", return_value=True)
+    mocker.patch("nomia.pipeline.check_model_available", return_value=True)
     mocker.patch("ollama.Client.chat", return_value=_fake_chat_response())
 
     scan_resp = client.post("/api/scan", json={"source_folders": [str(source_dir)], "destination_root": str(dest_dir)})
@@ -149,7 +149,7 @@ def test_apply_requires_confirm_true(client, tmp_path, mocker):
     source_dir.mkdir()
     Image.new("RGB", (10, 10)).save(source_dir / "photo.jpg")
 
-    mocker.patch("nomia.classify.check_model_available", return_value=True)
+    mocker.patch("nomia.pipeline.check_model_available", return_value=True)
     mocker.patch("ollama.Client.chat", return_value=_fake_chat_response())
 
     scan_resp = client.post("/api/scan", json={"source_folders": [str(source_dir)], "destination_root": str(tmp_path / "dest")})
@@ -166,7 +166,7 @@ def test_bulk_patch_updates_multiple_items(client, tmp_path, mocker):
     Image.new("RGB", (10, 10)).save(source_dir / "a.jpg")
     Image.new("RGB", (10, 10)).save(source_dir / "b.jpg")
 
-    mocker.patch("nomia.classify.check_model_available", return_value=True)
+    mocker.patch("nomia.pipeline.check_model_available", return_value=True)
     mocker.patch("ollama.Client.chat", return_value=_fake_chat_response(confidence=0.6))  # -> review route
 
     scan_resp = client.post("/api/scan", json={"source_folders": [str(source_dir)], "destination_root": str(tmp_path / "dest")})

@@ -13,6 +13,7 @@ from typing import Callable, Literal
 
 from pydantic import BaseModel
 
+from nomia import siglip
 from nomia.classify import ClassificationOutcome, classify_file, check_model_available
 from nomia.config import NomiaConfig
 from nomia.errors import ModelNotAvailableError
@@ -99,11 +100,21 @@ def build_plan(
     source_folders = [Path(p) for p in cfg.source_folders]
     destination_root = Path(cfg.destination_root)
 
+    # Honest run-level model attribution: in router/fast_only modes many (or all) items are
+    # decided by the fast path, not the Ollama model - per-item attribution lives in each
+    # item's reason and raw_model_response audit blob.
+    if cfg.fastpath.mode == "fast_only":
+        model_label = "siglip+keywords"
+    elif cfg.fastpath.mode == "router":
+        model_label = f"siglip+keywords, fallback {cfg.model.active_model}"
+    else:
+        model_label = cfg.model.active_model
+
     run_id = journal.start_run(
         source_folders=[str(p) for p in source_folders],
         destination_root=str(destination_root),
         naming_template=cfg.active_naming_template(),
-        model_used=cfg.model.active_model,
+        model_used=model_label,
         thresholds=cfg.thresholds.model_dump(),
         config_snapshot=cfg.model_dump(mode="json"),
         run_id=run_id,
@@ -161,11 +172,21 @@ def _build_plan_inner(
 
         to_process.append(record)
 
-    # Fail fast: if there's anything left to classify, confirm the model is actually available
-    # before spending time on extraction (which can be slow for many/large PDFs) only to
-    # discover the model problem on file 50 of 200.
-    if to_process and not check_model_available(cfg.model.active_model, host=cfg.model.ollama_host):
-        raise ModelNotAvailableError(cfg.model.active_model)
+    # Fail fast: if there's anything left to classify, confirm the classifier is actually
+    # available before spending time on extraction (which can be slow for many/large PDFs) only
+    # to discover the problem on file 50 of 200. fast_only mode never calls Ollama, so it needs
+    # the fast-path deps instead of a pulled model; router/off modes need the Ollama model
+    # (router's fallback depends on it even when the fast path handles most files).
+    if to_process:
+        if cfg.fastpath.mode == "fast_only":
+            if not siglip.is_available():
+                raise ModelNotAvailableError(
+                    "siglip (fast path)",
+                    "fastpath.mode is 'fast_only' but the fast-path dependencies are not "
+                    "installed. Install them with: uv sync --extra fastpath",
+                )
+        elif not check_model_available(cfg.model.active_model, host=cfg.model.ollama_host):
+            raise ModelNotAvailableError(cfg.model.active_model)
 
     _notify(progress_cb, "extracting", 0, len(to_process))
     signals_list = extract_all(to_process, cfg, max_workers=max_extract_workers)

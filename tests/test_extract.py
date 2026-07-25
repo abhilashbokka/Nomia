@@ -200,3 +200,53 @@ def test_extract_all_never_raises_on_mixed_batch(tmp_path):
     assert errors["broken.jpg"] == "corrupt"
     assert errors["notes.txt"] == "unsupported_format"
     assert errors["good.png"] is None
+
+
+def test_pdf_short_template_text_layer_swapped_for_richer_ocr(tmp_path, monkeypatch):
+    """An old PDF whose embedded layer holds only template text (short but 'good quality')
+    while the real content is a scan: OCR recovers much more text and must win."""
+    path = tmp_path / "old_lab_report.pdf"
+    doc = fitz.open()
+    page = doc.new_page()
+    page.insert_text((72, 72), "Standard Lab Form Rev 1994 - Property of the Laboratory")
+    doc.save(path)
+    doc.close()
+
+    rich_ocr_text = "Patient: John Doe\nSpecimen: Blood\nDiagnosis pending review\n" * 20
+    monkeypatch.setattr("nomia.ocr.is_available", lambda: True)
+    monkeypatch.setattr("nomia.ocr.ocr_image", lambda img: rich_ocr_text)
+
+    signals = extract_signals(_record_for(tmp_path, "old_lab_report.pdf"), NomiaConfig())
+
+    assert signals.text_source == "ocr"
+    assert "Patient" in signals.extracted_text
+
+
+def test_pdf_short_but_genuine_text_layer_is_kept_when_ocr_is_no_richer(tmp_path, monkeypatch):
+    """A genuinely sparse born-digital PDF keeps its exact text layer - OCR of the same page
+    reads the same words, is not substantially richer, and must not replace it."""
+    path = tmp_path / "stub.pdf"
+    doc = fitz.open()
+    page = doc.new_page()
+    # ~260 chars: comfortably above the quality threshold, below SHORT_TEXT_LAYER_CHARS.
+    # Inserted line by line so nothing clips off the page edge (clipped text vanishes from
+    # get_text() and would shrink the layer below what this test intends).
+    layer_lines = [
+        "Appointment reminder for Tuesday at nine thirty in the morning.",
+        "Please arrive fifteen minutes early and bring your insurance card.",
+        "Parking is available in the structure on Fifth Street.",
+        "Call our front desk with any questions about this visit.",
+    ]
+    layer_text = " ".join(layer_lines)
+    for i, line in enumerate(layer_lines):
+        page.insert_text((72, 72 + 18 * i), line)
+    doc.save(path)
+    doc.close()
+
+    monkeypatch.setattr("nomia.ocr.is_available", lambda: True)
+    monkeypatch.setattr("nomia.ocr.ocr_image", lambda img: layer_text + " maybe")
+
+    signals = extract_signals(_record_for(tmp_path, "stub.pdf"), NomiaConfig())
+
+    assert signals.text_source == "pdf_layer"
+    assert " ".join(signals.extracted_text.split()) == layer_text

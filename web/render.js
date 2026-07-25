@@ -144,6 +144,8 @@ export function renderToggles() {
   document.getElementById("preserve-source-toggle").checked = !!state.config.preserve_source;
   document.getElementById("keep-dump-toggle").checked = !!state.config.keep_dump_copies;
   document.getElementById("sweep-other-toggle").checked = !!state.config.sweep_other_files;
+  const fastpathSelect = document.getElementById("fastpath-mode-select");
+  if (fastpathSelect && state.config.fastpath) fastpathSelect.value = state.config.fastpath.mode;
 }
 
 export function renderDestination() {

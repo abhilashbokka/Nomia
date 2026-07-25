@@ -53,6 +53,12 @@
         <section class="panel-section">
           <h2>Model</h2>
           <div id="model-selector"></div>
+          <p class="hint">Fast classification (SigLIP + keywords)</p>
+          <select id="fastpath-mode-select">
+            <option value="router">On, vision-model fallback (recommended)</option>
+            <option value="fast_only">Fast path only (no Ollama needed)</option>
+            <option value="off">Off (vision model for every file)</option>
+          </select>
         </section>
 
         <section class="panel-section">

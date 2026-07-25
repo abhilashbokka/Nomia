@@ -18,8 +18,12 @@ Keep this framing in the README and any user-facing copy.
 ```
 Source folders
    → scan (walk dirs, dedupe by content hash)
-   → extract signals per file (EXIF, PDF page render, image decode, path context)
-   → classify (single Ollama vision call → structured JSON)
+   → extract signals per file (EXIF, PDF page render / text layer / OCR, image decode, path context)
+   → classify — tiered:
+        fast path (default): SigLIP zero-shot on the rendered image × keyword evidence in the
+                             extracted text → fused confidence (nomia/siglip.py, nomia/keywords.py)
+        fallback: single Ollama vision call → structured JSON (only when the fast path isn't
+                  auto-confident; `fastpath.mode` = router | fast_only | off)
    → confidence routing (auto / review / unsorted)
    → naming (template engine → collision + copy-ordering logic)
    → organize (dry-run preview → move/copy, with undo journal)
@@ -33,6 +37,35 @@ no chained prompts.
 Ollama serializes model inference server-side, so a `ThreadPoolExecutor` helps the I/O-bound
 stages (scanning, EXIF reads, PDF rendering) but buys nothing at the classification step itself.
 Parallelize extraction; queue classification through one worker.
+
+### The fast classification path (why it exists, how it's wired)
+
+An autoregressive VLM emitting an 11-way label on CPU-only hardware costs 15–47s/file (~8.7
+tokens/sec decode is the hardware floor on the 2019 Intel MBP this targets). Classification to a
+fixed category list is a discriminative task, so the default path is:
+
+- **SigLIP zero-shot** (`google/siglip-base-patch16-224`, `nomia/siglip.py`) scores the rendered
+  image against each taxonomy category's `vision_prompt` (~0.2s/file on the same hardware).
+- **Keyword fusion** (`nomia/keywords.py`): distinct keyword-phrase hits in the extracted text
+  (PDF layer or Apple-Vision OCR) multiply up that category's probability —
+  `p ** (1/prob_temperature) * (1 + keyword_boost * hits)`, renormalized. This is what separates
+  invoice/bank_statement/medical/contract, which look alike to a vision embedding.
+- Fast-path results route through the SAME confidence thresholds; in `router` mode (default)
+  only an auto-confident fast result skips the VLM — everything ambiguous still gets the full
+  vision call. `fast_only` never calls Ollama; `off` restores VLM-for-everything.
+- Both `keywords` and `vision_prompt` live on `CategoryDef` (user-editable taxonomy);
+  `keyword_boost`/`prob_temperature` defaults were tuned against the 207-file labeled set —
+  don't change them without re-running `tests/benchmark.py --mode fast --sample-dir
+  tests/real_sample_files`.
+- The fast path is an **optional extra** (`uv sync --extra fastpath`, torch + transformers),
+  capability-gated exactly like `nomia/ocr.py`: absent deps degrade to VLM-only, never crash.
+  The SigLIP weights download once from HF (like `ollama pull`), then everything is offline.
+- Per-item audit: fast-path decisions store the full evidence (per-category SigLIP probs,
+  keyword hits, fused confidence) as JSON in `raw_model_response`, with `model_used =
+  "siglip+keywords"` — invariant #3 applies to every tier equally.
+- **Intel-Mac dependency ceiling:** the last x86-macOS torch wheel is 2.2.2 (cp312), which is why
+  `.python-version` pins 3.12 and the `fastpath` extra forks its torch requirement by platform.
+  Don't bump either without checking wheels exist for this machine.
 
 ## Five non-negotiable invariants
 
@@ -67,9 +100,12 @@ Two additions layered on top of these, not replacements for them:
 
 ## Classification contract
 
-- Default model: `moondream` (small, fast, coarse categories). Accuracy mode: `llama3.2-vision:11b`,
-  selectable in config/UI. Handle either model not being pulled yet as a normal, expected state —
-  never let a missing model crash anything; surface the exact `ollama pull <model>` command.
+- Default VLM (the fast path's fallback): `qwen3.5:4b` — replaced `moondream` 2026-07-25 after
+  the 207-file real benchmark (moondream 27.1%, never auto-confident; qwen3.5:4b is the best VLM
+  measured on this hardware, run with `think=False` + 640px inputs, both handled in classify.py).
+  Accuracy mode: `llama3.2-vision:11b`, selectable in config/UI (still unmeasured here). Handle
+  any model not being pulled yet as a normal, expected state — never let a missing model crash
+  anything; surface the exact `ollama pull <model>` command.
 - Call shape (verified against the installed `ollama` Python client — do not assume the shape from
   older docs/examples):
   ```python
@@ -84,6 +120,10 @@ Two additions layered on top of these, not replacements for them:
       keep_alive="30m",    # TOP-LEVEL kwarg on chat(), not nested inside options
   )
   ```
+- **Thinking-capable model families get `think=False`** (top-level chat kwarg, families listed in
+  `classify.py`'s `_THINKING_MODEL_PREFIXES`): left enabled, a thinking model burns the whole
+  `num_predict` budget on reasoning tokens and never emits JSON — measured 47.6s → 5.0s per file
+  on qwen3.5:4b with the answer intact. A model that rejects the parameter is retried without it.
 - Required JSON schema back from the model:
   ```json
   {

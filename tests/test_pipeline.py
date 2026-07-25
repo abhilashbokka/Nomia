@@ -36,7 +36,7 @@ def test_build_plan_classifies_and_names_a_simple_image(tmp_path, mocker):
     (Path(cfg.source_folders[0]) / "photo.jpg").write_bytes(b"")
     Image.new("RGB", (20, 20)).save(Path(cfg.source_folders[0]) / "photo.jpg")
 
-    mocker.patch("nomia.classify.check_model_available", return_value=True)
+    mocker.patch("nomia.pipeline.check_model_available", return_value=True)
     mocker.patch("ollama.Client.chat", return_value=_fake_chat_response())
 
     journal = _journal(tmp_path)
@@ -60,7 +60,7 @@ def test_build_plan_routes_low_confidence_to_unsorted(tmp_path, mocker):
     cfg = _cfg(tmp_path)
     Image.new("RGB", (20, 20)).save(Path(cfg.source_folders[0]) / "ambiguous.jpg")
 
-    mocker.patch("nomia.classify.check_model_available", return_value=True)
+    mocker.patch("nomia.pipeline.check_model_available", return_value=True)
     mocker.patch("ollama.Client.chat", return_value=_fake_chat_response(confidence=0.2))
 
     plan = build_plan(cfg, _journal(tmp_path))
@@ -71,6 +71,7 @@ def test_build_plan_routes_low_confidence_to_unsorted(tmp_path, mocker):
 
 def test_build_plan_detects_duplicate_content(tmp_path, mocker):
     cfg = _cfg(tmp_path)
+    mocker.patch("nomia.pipeline.check_model_available", return_value=True)
     src = Path(cfg.source_folders[0])
     (src / "a.txt").write_bytes(b"identical-content")
     (src / "b.txt").write_bytes(b"identical-content")
@@ -82,8 +83,9 @@ def test_build_plan_detects_duplicate_content(tmp_path, mocker):
     assert routes.count("skip_duplicate") == 1
 
 
-def test_build_plan_leaves_unsupported_files_untouched_by_default(tmp_path):
+def test_build_plan_leaves_unsupported_files_untouched_by_default(tmp_path, mocker):
     cfg = _cfg(tmp_path)
+    mocker.patch("nomia.pipeline.check_model_available", return_value=True)
     (Path(cfg.source_folders[0]) / "notes.txt").write_text("hello")
 
     plan = build_plan(cfg, _journal(tmp_path))
@@ -92,8 +94,9 @@ def test_build_plan_leaves_unsupported_files_untouched_by_default(tmp_path):
     assert plan.items[0].dest_relative_path is None
 
 
-def test_build_plan_sweeps_unsupported_files_when_enabled(tmp_path):
+def test_build_plan_sweeps_unsupported_files_when_enabled(tmp_path, mocker):
     cfg = _cfg(tmp_path, sweep_other_files=True)
+    mocker.patch("nomia.pipeline.check_model_available", return_value=True)
     (Path(cfg.source_folders[0]) / "notes.txt").write_text("hello")
 
     plan = build_plan(cfg, _journal(tmp_path))
@@ -102,8 +105,9 @@ def test_build_plan_sweeps_unsupported_files_when_enabled(tmp_path):
     assert str(plan.items[0].dest_relative_path).startswith("_Other")
 
 
-def test_build_plan_routes_corrupt_file_to_unsorted_with_error(tmp_path):
+def test_build_plan_routes_corrupt_file_to_unsorted_with_error(tmp_path, mocker):
     cfg = _cfg(tmp_path)
+    mocker.patch("nomia.pipeline.check_model_available", return_value=True)
     (Path(cfg.source_folders[0]) / "broken.jpg").write_bytes(b"not a real jpeg")
 
     plan = build_plan(cfg, _journal(tmp_path))
@@ -134,7 +138,7 @@ def test_idempotency_skips_previously_organized_source_path(tmp_path, mocker):
     photo = Path(cfg.source_folders[0]) / "photo.jpg"
     Image.new("RGB", (10, 10)).save(photo)
 
-    mocker.patch("nomia.classify.check_model_available", return_value=True)
+    mocker.patch("nomia.pipeline.check_model_available", return_value=True)
     mocker.patch("ollama.Client.chat", return_value=_fake_chat_response())
 
     journal = _journal(tmp_path)
@@ -148,3 +152,39 @@ def test_idempotency_skips_previously_organized_source_path(tmp_path, mocker):
     second_plan = build_plan(cfg, journal)
     assert second_plan.summary.get("skip_already_organized") == 1
     # No Ollama call should have been needed for the second plan's only file.
+
+
+def test_build_plan_fast_only_requires_fastpath_deps(tmp_path):
+    # conftest's autouse fixture reports siglip unavailable; fast_only must fail fast with a
+    # clear installation hint rather than classifying every file as failed one by one.
+    cfg = _cfg(tmp_path)
+    cfg.fastpath.mode = "fast_only"
+    Image.new("RGB", (10, 10)).save(Path(cfg.source_folders[0]) / "photo.jpg")
+
+    try:
+        build_plan(cfg, _journal(tmp_path))
+        assert False, "expected ModelNotAvailableError"
+    except ModelNotAvailableError as exc:
+        assert "fastpath" in str(exc)
+
+
+def test_build_plan_fast_only_runs_without_ollama(tmp_path, mocker):
+    """fast_only mode must never touch Ollama - neither the availability check nor a chat call."""
+    cfg = _cfg(tmp_path)
+    cfg.fastpath.mode = "fast_only"
+    cfg.fastpath.prob_temperature = 1.0  # routing calibration isn't what this test is about
+    Image.new("RGB", (10, 10)).save(Path(cfg.source_folders[0]) / "photo.jpg")
+
+    keys = [c.key for c in cfg.taxonomy]
+    probs = [0.95 if k == "photo" else 0.05 / (len(keys) - 1) for k in keys]
+    mocker.patch("nomia.siglip.is_available", return_value=True)
+    mocker.patch("nomia.siglip.scores", return_value=probs)
+    mock_check = mocker.patch("nomia.pipeline.check_model_available")
+    mock_chat = mocker.patch("ollama.Client.chat")
+
+    plan = build_plan(cfg, _journal(tmp_path))
+
+    mock_check.assert_not_called()
+    mock_chat.assert_not_called()
+    assert plan.summary.get("auto") == 1
+    assert plan.items[0].category == "photo"

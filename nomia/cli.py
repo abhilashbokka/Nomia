@@ -38,8 +38,9 @@ def cmd_doctor(args: argparse.Namespace) -> int:
         pulled = {m.model for m in models_resp.models}
         print(f"[OK]   Ollama reachable at {_ollama_host()}")
 
-        default_model = "moondream"
-        accuracy_model = "llama3.2-vision:11b"
+        model_cfg = load_config().model
+        default_model = model_cfg.default_model
+        accuracy_model = model_cfg.accuracy_model
 
         if any(m == default_model or m.startswith(default_model + ":") for m in pulled):
             print(f"[OK]   Default model '{default_model}' is pulled")
@@ -84,6 +85,29 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     except Exception as exc:  # noqa: BLE001
         print(f"[FAIL] Pillow failed to import: {exc}")
         ok = False
+
+    # --- Optional fast path (SigLIP + keywords) ---
+    # Absent deps are a WARN, not a FAIL: the fast path is an optional acceleration and the
+    # pipeline degrades gracefully to the VLM-only behavior without it.
+    from nomia import ocr, siglip
+
+    if ocr.is_available():
+        print("[OK]   Apple Vision OCR available (ocrmac)")
+    else:
+        print("[WARN] Apple Vision OCR not available — text evidence for classification will "
+              "be limited to PDF text layers. On macOS, install with: uv sync --extra macos")
+
+    if siglip.is_available():
+        model_id = load_config().fastpath.model_id
+        if siglip.is_model_cached(model_id):
+            print(f"[OK]   Fast path ready: SigLIP model '{model_id}' cached locally")
+        else:
+            print(f"[WARN] Fast-path deps installed, but SigLIP model '{model_id}' is not "
+                  f"downloaded yet — the first classification will fetch it once (network "
+                  f"needed that one time only)")
+    else:
+        print("[WARN] Fast path (SigLIP) not available — classification will use the slower "
+              "vision model for every file. Install with: uv sync --extra fastpath")
 
     print("=" * 40)
     print("All checks passed." if ok else "Some checks failed — see [FAIL] lines above.")

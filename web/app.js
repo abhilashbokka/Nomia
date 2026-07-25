@@ -119,6 +119,10 @@ function wireLeftPanel() {
     namingPreviewTimer = setTimeout(refreshNamingPreview, 150);
   });
 
+  document.getElementById("fastpath-mode-select").onchange = (e) => {
+    if (state.config.fastpath) state.config.fastpath.mode = e.target.value;
+  };
+
   document.getElementById("preserve-source-toggle").onchange = (e) => { state.config.preserve_source = e.target.checked; };
   document.getElementById("keep-dump-toggle").onchange = (e) => { state.config.keep_dump_copies = e.target.checked; };
   document.getElementById("sweep-other-toggle").onchange = (e) => { state.config.sweep_other_files = e.target.checked; };

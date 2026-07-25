@@ -36,20 +36,26 @@ safely and explain itself.** That's what most of this codebase is actually about
 ```
 Source folders
    → scan (walk dirs, dedupe by content hash)
-   → extract signals per file (EXIF, PDF page render, image decode, path context)
-   → classify (single Ollama vision call → structured JSON)
+   → extract signals per file (EXIF, PDF page render / text layer / OCR, image decode, path context)
+   → classify (fast path: SigLIP + keyword evidence → vision-model fallback for ambiguous files)
    → confidence routing (auto / review / unsorted)
    → naming (template engine → collision + copy-ordering logic)
    → organize (dry-run preview → move/copy, with undo journal)
    → report (Excel log of every decision)
 ```
 
-Each file is read once. Every extracted signal (EXIF date, GPS, path context, PDF page count)
-is bundled with the rendered image into a single structured-JSON call to a local Ollama model —
-no multi-pass reasoning, no chained prompts.
+Each file is read once. With the optional fast path installed, most files are classified in a
+fraction of a second by a small discriminative model (SigLIP zero-shot over your editable
+category list) fused with keyword evidence found in the document's own text (PDF text layer, or
+Apple-Vision OCR on macOS). Only files the fast path isn't confident about go to the slower
+Ollama vision model — as a single structured-JSON call bundling every extracted signal; no
+multi-pass reasoning, no chained prompts. Three modes, selectable in config/UI: `router`
+(default, fast path + VLM fallback), `fast_only` (never calls Ollama), `off` (VLM for every
+file, the original behavior).
 
-**Models:** `moondream` by default (small, fast, good enough for coarse categories);
-`llama3.2-vision:11b` as an opt-in accuracy mode, selectable per run.
+**Models:** `google/siglip-base-patch16-224` for the fast path (optional extra); `qwen3.5:4b` as
+the default Ollama fallback (best VLM measured on the real benchmark set); `llama3.2-vision:11b`
+as an opt-in accuracy mode, selectable per run.
 
 ## Quickstart
 
@@ -60,13 +66,20 @@ running locally.
 git clone <this repo>
 cd Nomia
 uv sync
-ollama pull moondream
+ollama pull qwen3.5:4b
 # optional, for the accuracy-mode model:
 ollama pull llama3.2-vision:11b
+
+# strongly recommended on macOS: on-device OCR + the SigLIP fast path
+# (~2.5GB of ML deps; SigLIP weights download once on first use, then fully offline)
+uv sync --extra macos --extra fastpath
 
 uv run nomia doctor        # confirms Ollama + the image/PDF libraries are ready
 uv run nomia serve         # launches the local web UI at http://127.0.0.1:8000
 ```
+
+> Intel Macs: the project pins Python 3.12 (`.python-version`) because the last
+> Intel-macOS PyTorch wheel (2.2.2, needed by the fast path) has no 3.13 build.
 
 Or drive it entirely from the CLI:
 
@@ -134,40 +147,59 @@ more usefully, a **route-vs-correctness cross-tab**: does confidence routing act
 model's mistakes, or do wrong predictions occasionally sneak through at "auto" confidence?
 
 ```bash
-uv run python tests/generate_sample_files.py   # (re)generates the labeled fixture set
-uv run python tests/benchmark.py --model default    # moondream
-uv run python tests/benchmark.py --model accuracy   # llama3.2-vision:11b, if pulled
-uv run python tests/benchmark.py --model both
+uv run python tests/generate_sample_files.py   # (re)generates the synthetic fixture set
+uv run python tests/benchmark.py --model default    # config default model, VLM-only
+uv run python tests/benchmark.py --mode fast   --sample-dir tests/real_sample_files
+uv run python tests/benchmark.py --mode tiered --sample-dir tests/real_sample_files
 ```
 
 Results are written to `tests/benchmark_results.json`. If you want a number, run it yourself —
-these will drift run to run (the model isn't fully deterministic) and will look different on
-your own files.
+these will drift run to run and will look different on your own files.
 
-The most recent run against `moondream` on the 15-file labeled set here (2026-07-20):
-**33.3% overall accuracy** — a small, fast model isn't very accurate on a deliberately
-mixed/ambiguous synthetic test set, and this README says so plainly rather than picking a
-flattering run. The part worth actually paying attention to is the route/correctness breakdown:
+**Test on your own real files** (the most honest benchmark there is — nothing ever leaves
+your machine): make a folder with one subfolder per category key, drop in your own modern
+receipts, bills, screenshots, and photos, then:
 
-| Route | Correct | Incorrect | % correct |
+```bash
+uv run python tests/make_labels.py ~/my_real_docs        # builds labels.json from folder names
+uv run python tests/benchmark.py --mode tiered --sample-dir ~/my_real_docs
+```
+
+And for a zero-risk trial on a real messy folder (e.g. `~/Downloads`): the app's default
+flow is already a dry run — `uv run nomia plan --source ~/Downloads --dest ~/Organized`
+touches nothing on disk until you explicitly apply, and the `preserve_source` toggle keeps
+the source byte-for-byte untouched even then.
+
+Most recent runs on the 207-file real-world labeled set in `tests/real_sample_files/`
+(2026-07-25, 2019 Intel MacBook Pro, CPU only):
+
+| Pipeline | Accuracy | Mean latency | Auto-filed bucket |
 |---|---|---|---|
-| auto | 0 | 0 | — |
-| review | 5 | 5 | 50% |
-| unsorted / failed | 0 | 5 | 0% (by definition — no prediction was made) |
+| `moondream` VLM only | 27.1% | 29.6s/file | never reached auto confidence |
+| Fast path only (SigLIP + keywords) | 81.2% | **0.21s/file** | 122 files auto, 95% of them correct |
+| Tiered (fast path + `qwen3.5:4b` fallback) | 79.2% | 11.2s/file | fast tier auto-files 59% of files at 95% correct; every VLM-fallback answer routes to review |
 
-**Not one item was ever routed to `auto` in this run.** Every classification the model produced
-— right or wrong — landed in `review` (waiting for a human to confirm) or was flagged as
-unparseable and routed to `_Unsorted/`. That's the actual point of the confidence-routing design:
-it isn't there to make the model look more accurate than it is, it's there so a mediocre-but-fast
-local model never gets to silently auto-file a wrong guess. The benchmark also caught a real
-failure mode worth documenting honestly: on harder/more ambiguous images, `moondream` sometimes
-echoes the entire category list back as its answer instead of picking one (e.g.
-`"receipt, invoice, id_document, bank_statement, ..."`) rather than a real key — `classify.py`
-detects and rejects this (an implausibly long "category" value) rather than accepting it, routing
-those files to `_Unsorted/` instead of risking a nonsense destination folder name. If accuracy
-matters more than speed for your files, switch to the `llama3.2-vision:11b` accuracy mode and
-run the benchmark again — the whole point of shipping this script is that you don't have to take
-this README's word for it either way.
+The route/correctness cross-tab is the number that actually matters: a wrong guess that lands
+in `review` costs a human three seconds; a wrong guess that auto-files is a real mistake. The
+fast path's auto bucket was 95% correct in this run, and everything it wasn't sure about
+(invoices vs. receipts, ambiguous medical forms) landed in `review`/`_Unsorted` — or, in the
+default `router` mode, goes to the Ollama vision model for a second opinion instead.
+
+The tiered run also exposed why `review_vlm_fallback` (default on) exists: the VLM reported
+auto-level confidence on essentially every file the fast path had flagged as hard, while being
+right on only ~57% of them. Small local VLMs are least calibrated exactly where they're needed
+most — so a fallback answer is treated as a *suggestion for review*, never an auto-file. On the
+fixture set the VLM's second opinion helps invoices and medical documents and hurts the (oddly
+vintage) contract/form fixtures; on modern personal files the router default is expected to be
+the right trade, and `fastpath.mode = "fast_only"` is one config switch away if you'd rather
+never wait on the VLM at all.
+
+Two honestly-documented failure modes from earlier VLM-only benchmarking still shape the design:
+small vision models sometimes echo the whole category list back as their answer (rejected by
+`classify.py` as an implausibly long category, routed to `_Unsorted/`), and they essentially
+never produce well-calibrated high confidence on hard scans — which is why the discriminative
+fast path, whose confidence is a real probability distribution over your categories, now fronts
+the pipeline.
 
 ## Project layout
 

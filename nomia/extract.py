@@ -36,6 +36,15 @@ PDF_EXTENSIONS = {".pdf"}
 MAX_RENDER_DIM = 1024
 PDF_RENDER_DPI = 150
 
+# A PDF text layer this short is suspicious even when its quality score is fine: old or
+# partially-digital PDFs often carry a text layer covering only the form template or headers
+# while the real content is a scan. Measured on the labeled fixture set: 8 of 27 real PDFs had
+# a "good-quality" layer under this length while on-device OCR of the rendered page recovered
+# 1.5-8x more text - and those files were exactly the classification misses. Below this length
+# OCR is also attempted and wins if it is substantially richer at comparable quality.
+SHORT_TEXT_LAYER_CHARS = 600
+OCR_RICHER_FACTOR = 1.5
+
 MediaType = Literal["image", "pdf", "unsupported"]
 # "zero_byte" | "corrupt" | "encrypted" | "unsupported_format" | "unreadable"
 ExtractError = str
@@ -100,6 +109,21 @@ def _to_png_bytes(image: Image.Image) -> bytes:
     buf = io.BytesIO()
     image.save(buf, format="PNG")
     return buf.getvalue()
+
+
+def downscale_png_bytes(png_bytes: bytes, max_dim: int) -> bytes:
+    """Re-encodes an already-rendered PNG at a smaller long-edge size. Used by classify.py to
+    shrink the image sent to the Ollama vision model without touching the full-size render
+    (which thumbnails and OCR still want). Returns the input unchanged on any failure or when
+    it is already small enough."""
+    try:
+        with Image.open(io.BytesIO(png_bytes)) as image:
+            if max(image.size) <= max_dim:
+                return png_bytes
+            return _to_png_bytes(_downscale(image.convert("RGB"), max_dim))
+    except Exception as exc:  # noqa: BLE001 - a resize failure must never block classification
+        logger.debug("Downscale for VLM call failed, sending original render: %s", exc)
+        return png_bytes
 
 
 def _dms_to_decimal(dms, ref) -> float | None:
@@ -224,18 +248,35 @@ def _extract_pdf(record: FileRecord, cfg: NomiaConfig) -> ExtractedSignals:
 
         # Tier 1: a real embedded text layer (born-digital PDF) is the cheapest, most reliable
         # signal available - classify.py uses this to skip the image entirely when it's good
-        # enough. Tier 2: a scanned/image-only PDF has no usable text layer, so fall back to
-        # OCR on the rendered first page as enrichment (never a substitute for the image, since
-        # OCR alone can't be trusted the way a real embedded text layer can).
+        # enough. Tier 2: OCR of the rendered first page, tried in two cases - the layer's
+        # quality is outright bad (scanned/image-only PDF), or the layer is suspiciously short
+        # (see SHORT_TEXT_LAYER_CHARS: old PDFs whose layer holds only the template text while
+        # the actual content is a scan). In the short-layer case the layer is only replaced
+        # when OCR is substantially richer at comparable quality, so a genuinely sparse
+        # born-digital document keeps its exact text layer.
         pdf_text = "\n\n".join(t for t in text_parts if t).strip()
         text_quality = assess_text_quality(pdf_text)
         extracted_text: str | None = pdf_text or None
         text_source: Literal["pdf_layer", "ocr", None] = "pdf_layer" if pdf_text else None
 
-        if text_quality < TEXT_QUALITY_THRESHOLD and ocr.is_available() and first_page_image is not None:
+        quality_bad = text_quality < TEXT_QUALITY_THRESHOLD
+        layer_short = bool(pdf_text) and len(pdf_text) < SHORT_TEXT_LAYER_CHARS
+        if (quality_bad or layer_short) and ocr.is_available() and first_page_image is not None:
             ocr_text = ocr.ocr_image(first_page_image)
             ocr_quality = assess_text_quality(ocr_text)
-            if ocr_quality > text_quality:
+            if quality_bad:
+                swap = ocr_quality > text_quality
+            else:
+                swap = (
+                    len(ocr_text) > OCR_RICHER_FACTOR * len(pdf_text)
+                    and ocr_quality >= text_quality - 0.05
+                )
+            if swap:
+                logger.info(
+                    "PDF %s: replaced %d-char text layer (quality %.2f) with %d-char OCR "
+                    "(quality %.2f).", record.path.name, len(pdf_text), text_quality,
+                    len(ocr_text), ocr_quality,
+                )
                 extracted_text = ocr_text or None
                 text_quality = ocr_quality
                 text_source = "ocr" if ocr_text else None

@@ -14,9 +14,10 @@ from typing import Literal
 import ollama
 from pydantic import BaseModel, ValidationError
 
+from nomia import keywords, siglip
 from nomia.config import CategoryDef, ConfidenceThresholds, NomiaConfig
 from nomia.errors import ModelNotAvailableError
-from nomia.extract import ExtractedSignals
+from nomia.extract import ExtractedSignals, downscale_png_bytes
 from nomia.text_quality import TEXT_QUALITY_THRESHOLD
 
 logger = logging.getLogger(__name__)
@@ -31,11 +32,25 @@ logger = logging.getLogger(__name__)
 # the whole batch (see CLAUDE.md: one bad file never kills the batch).
 MAX_PREDICT_TOKENS = 300
 CALL_TIMEOUT_SECONDS = 45
+# A model's FIRST call in a batch includes Ollama loading gigabytes of weights from disk, which
+# alone can exceed CALL_TIMEOUT_SECONDS on this hardware. Worse, a timed-out call keeps running
+# server-side (Ollama serializes inference), so every queued call behind it times out too - one
+# cold start could cascade into a whole batch of spurious failures. The first call per
+# (host, model) therefore gets a generous multiple of the timeout; keep_alive holds the model in
+# memory after that, so the strict timeout applies from the second call on.
+COLD_START_TIMEOUT_MULTIPLIER = 3
+_WARMED_MODELS: set[tuple[str, str]] = set()
 MAX_PLAUSIBLE_CATEGORY_LENGTH = 40
 # Bounds how much extracted/OCR'd text goes into a single prompt - a couple of dense pages is
 # already ample signal for classification; capping avoids an unusually text-heavy PDF ballooning
 # prompt size (and latency) for no real accuracy benefit.
 MAX_TEXT_CHARS_FOR_PROMPT = 4000
+# Long-edge size of the image actually sent to the Ollama vision model. Prefill cost scales
+# with image tokens and dominates VLM latency on CPU: measured on the target hardware, a 1024px
+# render costs ~1065 prompt tokens (~34s prefill) vs ~300 tokens at 640px, with no accuracy
+# difference detected on the labeled comparison run. The full-size render is untouched -
+# thumbnails and OCR keep using it; only the model input is shrunk.
+VLM_MAX_IMAGE_DIM = 640
 
 
 def _run_with_timeout(fn, timeout: float):
@@ -178,7 +193,12 @@ def build_prompt(
         context["has_gps_location"] = True
     if signals.pdf_page_count is not None:
         context["pdf_page_count"] = signals.pdf_page_count
-    if signals.extracted_text:
+    # OCR text is deliberately NOT added alongside an attached image: measured head-to-head,
+    # image+OCR-text was strictly worse than image alone (lower accuracy AND ~40% slower from
+    # the extra prefill tokens). OCR text still drives the fast path's keyword fusion; for the
+    # VLM it only appears when it is the primary signal - a real PDF text layer (attached with
+    # the image as corroboration, or alone in text_only mode).
+    if signals.extracted_text and (text_only or signals.text_source == "pdf_layer"):
         context["extracted_text"] = signals.extracted_text[:MAX_TEXT_CHARS_FOR_PROMPT]
         context["extracted_text_source"] = (
             "pdf_embedded_text_layer" if signals.text_source == "pdf_layer" else "on_device_ocr"
@@ -270,15 +290,92 @@ def _is_model_not_found(exc: ollama.ResponseError) -> bool:
     return exc.status_code == 404 or "not found" in str(exc.error or "").lower()
 
 
+# What lands in the journal/report "model" column for fast-path decisions; the exact SigLIP
+# model id is in the raw_response audit blob.
+FAST_PATH_MODEL_LABEL = "siglip+keywords"
+
+# Ollama model families where generation defaults to a thinking phase (see the think=False
+# handling in classify_file). Matched against the model name's base, before any ":tag".
+_THINKING_MODEL_PREFIXES = ("qwen3", "deepseek-r1", "gpt-oss", "magistral")
+
+
+def classify_file_fast(signals: ExtractedSignals, cfg: NomiaConfig) -> ClassificationOutcome | None:
+    """The fast classification tier: SigLIP zero-shot probabilities over the taxonomy's vision
+    prompts, multiplied up by keyword-phrase evidence found in the extracted text (PDF layer /
+    OCR), renormalized. Orders of magnitude cheaper than a VLM call on CPU-only hardware.
+
+    Returns None when the tier can't produce a result at all (optional deps missing, SigLIP
+    failure) - the caller decides what a low-confidence (but valid) result means per
+    cfg.fastpath.mode. Never raises for a bad file."""
+    if signals.error is not None or signals.render_png is None:
+        return None
+    if not siglip.is_available():
+        return None
+
+    prompts = [cat.effective_vision_prompt() for cat in cfg.taxonomy]
+    category_keys = [cat.key for cat in cfg.taxonomy]
+    probs = siglip.scores(signals.render_png, prompts, model_id=cfg.fastpath.model_id)
+    if probs is None or len(probs) != len(category_keys):
+        return None
+
+    matches = keywords.match_keywords(signals.extracted_text, cfg.taxonomy)
+    boost = cfg.fastpath.keyword_boost
+    temperature = max(cfg.fastpath.prob_temperature, 1e-6)
+    adjusted = [
+        (p ** (1.0 / temperature)) * (1.0 + boost * len(matches.get(key, [])))
+        for key, p in zip(category_keys, probs)
+    ]
+    total = sum(adjusted)
+    if total <= 0:
+        return None
+    adjusted = [a / total for a in adjusted]
+
+    top_index = max(range(len(category_keys)), key=adjusted.__getitem__)
+    top_key = category_keys[top_index]
+    confidence = round(adjusted[top_index], 4)
+
+    matched_phrases = matches.get(top_key, [])
+    reason = f"SigLIP matched '{top_key}' at {probs[top_index]:.2f}"
+    if matched_phrases:
+        reason += "; keyword evidence: " + ", ".join(matched_phrases[:4])
+
+    # The audit blob plays the role the VLM's raw response plays elsewhere: the full,
+    # unprocessed evidence behind the decision, preserved in the journal and Excel report
+    # (invariant #3: every action is logged with a reason).
+    audit = json.dumps({
+        "tier": "fast",
+        "siglip_model": cfg.fastpath.model_id,
+        "siglip_probs": {k: round(p, 4) for k, p in zip(category_keys, probs)},
+        "keyword_hits": matches,
+        "keyword_boost": boost,
+        "fused_confidence": confidence,
+    })
+
+    result = ClassificationResult(
+        category=top_key,
+        subcategory=None,
+        description=keywords.derive_description(signals.extracted_text, top_key),
+        reason=reason,
+        confidence=confidence,
+    )
+    return ClassificationOutcome(
+        result=result,
+        raw_response=audit,
+        model_used=FAST_PATH_MODEL_LABEL,
+        route=route_by_confidence(confidence, cfg.thresholds),
+    )
+
+
 def classify_file(
     signals: ExtractedSignals,
     cfg: NomiaConfig,
     *,
     model: str | None = None,
 ) -> ClassificationOutcome:
-    """The single Ollama call per file. Callers (pipeline.py) are expected to have already
-    routed anything with signals.error set away from here - this function still degrades
-    safely if called anyway, rather than trusting the caller blindly."""
+    """The unified classification entry point: fast tier (SigLIP + keyword fusion) first when
+    enabled, the single Ollama VLM call as the confident fallback. Callers (pipeline.py) are
+    expected to have already routed anything with signals.error set away from here - this
+    function still degrades safely if called anyway, rather than trusting the caller blindly."""
     active_model = model or cfg.model.active_model
 
     if signals.error is not None or not signals.all_render_pngs():
@@ -286,6 +383,25 @@ def classify_file(
             result=None, raw_response="", model_used=active_model,
             route="failed", error=signals.error or "no_render_available",
         )
+
+    mode = cfg.fastpath.mode
+    escalated_from_fast = False
+    if mode != "off":
+        fast = classify_file_fast(signals, cfg)
+        if fast is not None and (mode == "fast_only" or fast.route == "auto"):
+            # In router mode only an auto-confidence fast result short-circuits the VLM; an
+            # ambiguous file gets the full vision call rather than being parked in review on
+            # weaker evidence. fast_only accepts every fast result and routes it normally.
+            return fast
+        if fast is None and mode == "fast_only":
+            # fast_only never calls the VLM: without the optional fast-path deps this is a
+            # per-file failure (routed to _Unsorted/), and pipeline.build_plan fails the whole
+            # run up front with a clear message instead of ever reaching here.
+            return ClassificationOutcome(
+                result=None, raw_response="", model_used=FAST_PATH_MODEL_LABEL,
+                route="failed", error="fastpath_unavailable",
+            )
+        escalated_from_fast = fast is not None
 
     # A real embedded PDF text layer (born-digital PDF, not a scan) is the one case where we
     # skip the image entirely: it's cheaper/faster than a vision call and a more reliable signal
@@ -300,6 +416,13 @@ def classify_file(
     system_prompt, user_prompt = build_prompt(signals, cfg.taxonomy, text_only=text_only)
     client = ollama.Client(host=cfg.model.ollama_host)
 
+    # Thinking-capable model families spend the entire num_predict budget on reasoning tokens
+    # before any JSON appears when thinking is left at its default - measured on this hardware:
+    # 47.6s -> 5.0s per file on qwen3.5:4b with think=False, answer quality intact. Non-thinking
+    # models (moondream, llama3.2-vision) reject an explicit think parameter, so it is only sent
+    # where it applies, with a retry safety net below in case a family is misjudged.
+    disable_thinking = active_model.split(":")[0].lower().startswith(_THINKING_MODEL_PREFIXES)
+
     # Deliberately a single "user" message with the system instructions folded in, rather than
     # a separate system + user message pair. Verified empirically against the actual installed
     # moondream/Ollama combination: a separate system-role message produced consistently empty
@@ -310,23 +433,39 @@ def classify_file(
     combined_prompt = f"{system_prompt}\n\n{user_prompt}"
     message: dict[str, object] = {"role": "user", "content": combined_prompt}
     if not text_only:
-        message["images"] = signals.all_render_pngs()
+        message["images"] = [
+            downscale_png_bytes(png, VLM_MAX_IMAGE_DIM) for png in signals.all_render_pngs()
+        ]
+
+    call_kwargs: dict[str, object] = dict(
+        model=active_model,
+        messages=[message],
+        format="json",
+        options={"temperature": 0.1, "num_predict": MAX_PREDICT_TOKENS},
+        keep_alive=cfg.model.keep_alive,
+    )
+    if disable_thinking:
+        call_kwargs["think"] = False
 
     def _call() -> ollama.ChatResponse:
-        return client.chat(
-            model=active_model,
-            messages=[message],
-            format="json",
-            options={"temperature": 0.1, "num_predict": MAX_PREDICT_TOKENS},
-            keep_alive=cfg.model.keep_alive,
-        )
+        try:
+            return client.chat(**call_kwargs)
+        except ollama.ResponseError as exc:
+            if "think" in call_kwargs and "think" in str(exc.error or "").lower():
+                logger.info("Model %s rejected think=False; retrying without it.", active_model)
+                return client.chat(**{k: v for k, v in call_kwargs.items() if k != "think"})
+            raise
+
+    warm_key = (cfg.model.ollama_host, active_model)
+    timeout = CALL_TIMEOUT_SECONDS * (1 if warm_key in _WARMED_MODELS else COLD_START_TIMEOUT_MULTIPLIER)
 
     try:
-        response = _run_with_timeout(_call, CALL_TIMEOUT_SECONDS)
+        response = _run_with_timeout(_call, timeout)
+        _WARMED_MODELS.add(warm_key)
     except FutureTimeoutError:
         logger.error(
             "Ollama call for %s did not return within %ds; treating as a failed classification "
-            "rather than blocking the batch.", signals.path, CALL_TIMEOUT_SECONDS,
+            "rather than blocking the batch.", signals.path, timeout,
         )
         return ClassificationOutcome(
             result=None, raw_response="", model_used=active_model,
@@ -357,6 +496,17 @@ def classify_file(
         )
 
     route = route_by_confidence(result.confidence, cfg.thresholds)
+
+    # A file only reaches this VLM call in router mode because the fast path already judged it
+    # hard - and small local VLMs are badly calibrated exactly on those files (measured:
+    # auto-level confidence on ~every fallback while right ~57% of the time). A fallback answer
+    # therefore routes to review at best; only the fast path may auto-file.
+    if route == "auto" and escalated_from_fast and cfg.fastpath.review_vlm_fallback:
+        logger.info(
+            "VLM fallback answered '%s' for %s at confidence %.2f; routing to review instead "
+            "of auto (review_vlm_fallback).", result.category, signals.path, result.confidence,
+        )
+        route = "review"
 
     # A small model occasionally invents a category that isn't one of the configured taxonomy
     # keys at all (observed empirically), rather than picking the closest real one - the system
