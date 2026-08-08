@@ -57,6 +57,41 @@ file, the original behavior).
 the default Ollama fallback (best VLM measured on the real benchmark set); `llama3.2-vision:11b`
 as an opt-in accuracy mode, selectable per run.
 
+### Module architecture
+
+Both extracted signals feed the fused confidence that drives auto-filing: the rendered
+page goes to SigLIP, and the document's own text (PDF text layer, or Apple-Vision OCR
+when the layer is missing or poor) goes to the keyword scorer. Keyword hits multiply
+into the same fused score that confidence routing thresholds — this text→keywords→fusion
+edge is what separates look-alike text documents (invoice vs. bank statement vs. medical)
+without a VLM call.
+
+```mermaid
+flowchart TD
+  cli["cli.py"] --> pipe["pipeline.py<br/>batch orchestrator"]
+  web["server.py + web/"] --> pipe
+  pipe --> scan["scanner.py<br/>walk + SHA-256 dedupe"]
+  scan --> ext["extract.py<br/>one read per file"]
+  ext -- "rendered page PNG" --> sig["siglip.py<br/>zero-shot scores"]
+  ext -- "PDF text layer" --> tq["text_quality.py<br/>pick best text"]
+  ext -. "no/short text layer" .-> ocr["ocr.py<br/>Apple Vision OCR (optional)"]
+  ocr --> tq
+  tq -- "extracted text" --> kw["keywords.py<br/>distinct phrase hits"]
+  cfg["config.py taxonomy<br/>vision_prompt + keywords<br/>(user-editable)"] -.-> sig
+  cfg -.-> kw
+  sig --> fuse["fusion<br/>p^(1/T) × (1 + boost·hits)<br/>± corpus calibration"]
+  kw --> fuse
+  fuse --> route{"confidence routing"}
+  route -- "≥ 0.80 auto-file" --> nam["naming.py<br/>templates · date ordering ·<br/>collision suffixes"]
+  route -- "ambiguous" --> vlm["classify.py → ollama<br/>qwen3.5:4b · one JSON call<br/>(image + text + EXIF together)"]
+  tq -. "text in prompt" .-> vlm
+  vlm --> nam
+  route -- "< 0.50" --> uns["_Unsorted/"]
+  nam --> org["organizer.py<br/>dry-run plan → verified move ·<br/>_dump copy · undo journal"]
+  uns --> org
+  org --> rep["report.py<br/>Excel log — every decision"]
+```
+
 ## Quickstart
 
 Requires Python 3.11+, [uv](https://docs.astral.sh/uv/), and [Ollama](https://ollama.com/)
@@ -164,6 +199,24 @@ receipts, bills, screenshots, and photos, then:
 uv run python tests/make_labels.py ~/my_real_docs        # builds labels.json from folder names
 uv run python tests/benchmark.py --mode tiered --sample-dir ~/my_real_docs
 ```
+
+**External benchmarks with their own label sets** work the same way via `--taxonomy`: pass a
+JSON list of category definitions (key, vision prompt, keywords) and the benchmark classifies
+against those instead of the default taxonomy. `tests/taxonomies/rvl_cdip.json` ships a tuned
+16-class taxonomy for [RVL-CDIP](https://adamharley.com/rvl-cdip/) (the standard
+document-classification benchmark of 1980s–90s scanned tobacco-industry documents):
+
+```bash
+uv run python tests/make_labels.py ~/rvl_sample --taxonomy tests/taxonomies/rvl_cdip.json
+uv run python tests/benchmark.py --mode fast --sample-dir ~/rvl_sample \
+    --taxonomy tests/taxonomies/rvl_cdip.json --out /tmp/rvl_results.json \
+    --fastpath-model google/siglip-base-patch16-384 --corpus-calibration
+```
+
+`--fastpath-model` swaps the SigLIP checkpoint (384px trades ~3× vision-forward time for
+meaningfully better accuracy on dense documents) and `--corpus-calibration` enables the
+batch-mean prior correction (`fastpath.corpus_calibration` in config) — worthwhile on large
+mixed corpora, counterproductive on small single-type folders, hence off by default.
 
 And for a zero-risk trial on a real messy folder (e.g. `~/Downloads`): the app's default
 flow is already a dry run — `uv run nomia plan --source ~/Downloads --dest ~/Organized`

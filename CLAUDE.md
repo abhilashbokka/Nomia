@@ -53,10 +53,34 @@ fixed category list is a discriminative task, so the default path is:
 - Fast-path results route through the SAME confidence thresholds; in `router` mode (default)
   only an auto-confident fast result skips the VLM — everything ambiguous still gets the full
   vision call. `fast_only` never calls Ollama; `off` restores VLM-for-everything.
-- Both `keywords` and `vision_prompt` live on `CategoryDef` (user-editable taxonomy);
-  `keyword_boost`/`prob_temperature` defaults were tuned against the 207-file labeled set —
-  don't change them without re-running `tests/benchmark.py --mode fast --sample-dir
-  tests/real_sample_files`.
+- Both `keywords` and `vision_prompt` live on `CategoryDef` (user-editable taxonomy), plus
+  `extra_vision_prompts` (optional descriptor/template ensemble: per-category prompt groups,
+  normalized text embeddings averaged in `siglip.scores_grouped` — a single-prompt group is
+  bit-identical to the single-prompt path). `keyword_boost`/`prob_temperature` defaults were
+  tuned against the 207-file labeled set — don't change them without re-running
+  `tests/benchmark.py --mode fast --sample-dir tests/real_sample_files`.
+- `fastpath.corpus_calibration` (default OFF): divides each file's SigLIP probs by the
+  batch-mean vector before fusion (label-free prior correction, computed in pipeline.py after
+  extraction; SigLIP memoizes per-image scores so vision runs once per file; audit blob
+  records `corpus_calibrated`). Measured +5–6 pts on RVL-CDIP. Deliberately off by default:
+  on a small or homogeneous batch the batch mean is the class signal, not prompt bias, and
+  dividing it out fights correct answers. Stands down below 8 scoreable files.
+- External benchmarks: `tests/benchmark.py` takes `--taxonomy <json>` (list of CategoryDef),
+  `--fastpath-model <hf-id>`, `--corpus-calibration`, `--out <path>` (so RVL runs never
+  clobber `tests/benchmark_results.json`). The tuned 16-class RVL-CDIP taxonomy lives at
+  `tests/taxonomies/rvl_cdip.json`. Measured there (2026-08: eval-3200 set, 200/class,
+  disjoint from all tuning, single run): 63.1% ± 1.7 zero-shot* at ~0.55s/file SigLIP-384 +
+  ~1s OCR, auto bucket 24% coverage @ 91.7% correct (*prompts/keywords label-tuned on a
+  disjoint split; calibration transductive — full honesty ledger and per-method history in
+  `research/rvl-cdip/`, gitignored).
+- **Accuracy-mode encoder (measured 2026-08-08, benchmark.py-confirmed):**
+  `google/siglip-large-patch16-384` × failure-mined keywords reaches 68.7% ± 1.6 on the same
+  eval (auto 37.4% @ 92.6%; RVL-CDIP-N 89.2% ± 1.9) at 1.25s/file fp32 (2.6GB) or 1.04s/file
+  int8 (770MB — smaller than fp32-base; int8 is FASTER than fp32 at large size, slower at
+  base size, on this no-VNNI CPU). OOD auto-leak rises 2.4%→4.3% vs base — base stays the
+  default. Batched inference measured and refuted (single-stream saturates the cores).
+  SigLIP2-family checkpoints measured WORSE on document scans at both sizes — don't
+  "upgrade" to them without re-running the benchmark.
 - The fast path is an **optional extra** (`uv sync --extra fastpath`, torch + transformers),
   capability-gated exactly like `nomia/ocr.py`: absent deps degrade to VLM-only, never crash.
   The SigLIP weights download once from HF (like `ollama pull`), then everything is offline.
@@ -124,6 +148,12 @@ Two additions layered on top of these, not replacements for them:
   `classify.py`'s `_THINKING_MODEL_PREFIXES`): left enabled, a thinking model burns the whole
   `num_predict` budget on reasoning tokens and never emits JSON — measured 47.6s → 5.0s per file
   on qwen3.5:4b with the answer intact. A model that rejects the parameter is retried without it.
+  VLM per-call cost is content-dependent: ~5s on the modern fixture set, ~14s warm on dense
+  RVL-style scans at the same 640px (measured cool-machine 2026-08-08) — quote per corpus.
+- **`NOMIA_CALL_TIMEOUT_SECONDS` env var** overrides classify.py's 45s VLM watchdog. Added after
+  a measured thermal-throttling cascade (sustained batch load pinned the CPU at 39% speed;
+  normally-5s calls blew the fixed timeout and the whole VLM tier silently became timeouts —
+  graceful degradation held, but benchmarks must control thermal state and raise the ceiling).
 - Required JSON schema back from the model:
   ```json
   {
