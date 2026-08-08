@@ -34,6 +34,12 @@ _models: dict[str, tuple[object, object]] = {}
 # Normalized text embeddings per (model_id, prompts) — the taxonomy's prompts are identical for
 # every file in a run, so the text tower only needs to run when the taxonomy changes.
 _text_embeds: dict[tuple[str, tuple[str, ...]], object] = {}
+# Per-group mean embeddings (prompt ensembling), cached under the same regime.
+_group_embeds: dict[tuple[str, tuple[tuple[str, ...], ...]], object] = {}
+# Memoized per-image results so a corpus-calibration pre-pass and the classification pass
+# share ONE vision-tower forward per file. Keyed by image-content digest; bounded.
+_score_cache: dict[tuple[str, str, int], list[float]] = {}
+_SCORE_CACHE_MAX = 8192
 
 
 def is_available() -> bool:
@@ -102,6 +108,74 @@ def _get_text_embeds(model_id: str, prompts: tuple[str, ...], processor, model):
     embeds = embeds / embeds.norm(p=2, dim=-1, keepdim=True)
     _text_embeds[key] = embeds
     return embeds
+
+
+def _get_group_embeds(model_id: str, groups: tuple[tuple[str, ...], ...], processor, model):
+    """One normalized embedding per prompt group: the mean of the group's normalized prompt
+    embeddings, re-normalized (canonical CLIP-style prompt ensembling). A single-prompt group
+    reduces to that prompt's embedding exactly, so ensembling is a strict generalization of
+    the single-prompt path."""
+    import torch
+
+    key = (model_id, groups)
+    cached = _group_embeds.get(key)
+    if cached is not None:
+        return cached
+
+    flat = tuple(p for group in groups for p in group)
+    embeds = _get_text_embeds(model_id, flat, processor, model)
+    means = []
+    offset = 0
+    for group in groups:
+        chunk = embeds[offset:offset + len(group)]
+        offset += len(group)
+        mean = chunk.mean(dim=0, keepdim=True)
+        means.append(mean / mean.norm(p=2, dim=-1, keepdim=True))
+    result = torch.cat(means, dim=0)
+    _group_embeds[key] = result
+    return result
+
+
+def scores_grouped(
+    png_bytes: bytes, prompt_groups: list[list[str]], *, model_id: str = DEFAULT_MODEL_ID,
+) -> list[float] | None:
+    """Zero-shot probabilities for one image against prompt GROUPS (one group per category,
+    each holding one or more descriptor prompts), in group order. Ensembling multiple visual
+    descriptions per category lets text-poor categories be recognized by what is drawn on the
+    page (a grid of numbers, sparse display type, a product photograph) rather than a single
+    phrasing. Same failure contract as scores(): None on any failure, never raises."""
+    if not is_available():
+        return None
+    try:
+        import hashlib
+
+        import torch
+        from PIL import Image
+
+        groups = tuple(tuple(g) for g in prompt_groups)
+        cache_key = (hashlib.sha256(png_bytes).hexdigest()[:24], model_id, hash(groups))
+        cached = _score_cache.get(cache_key)
+        if cached is not None:
+            return list(cached)
+
+        processor, model = _get_model(model_id)
+        text_embeds = _get_group_embeds(model_id, groups, processor, model)
+
+        image = Image.open(io.BytesIO(png_bytes)).convert("RGB")
+        with torch.no_grad():
+            pixel_inputs = processor(images=image, return_tensors="pt")
+            image_embeds = model.get_image_features(**pixel_inputs)
+            image_embeds = image_embeds / image_embeds.norm(p=2, dim=-1, keepdim=True)
+            logits = image_embeds @ text_embeds.t() * model.logit_scale.exp() + model.logit_bias
+            probs = logits.softmax(dim=-1)[0]
+        result = [float(p) for p in probs]
+        if len(_score_cache) >= _SCORE_CACHE_MAX:
+            _score_cache.clear()
+        _score_cache[cache_key] = result
+        return list(result)
+    except Exception as exc:  # noqa: BLE001 - degrade to VLM fallback, never crash
+        logger.warning("SigLIP grouped scoring failed (%s); falling back.", exc)
+        return None
 
 
 def scores(png_bytes: bytes, prompts: list[str], *, model_id: str = DEFAULT_MODEL_ID) -> list[float] | None:

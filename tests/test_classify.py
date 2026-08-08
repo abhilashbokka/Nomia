@@ -278,7 +278,7 @@ def _fake_siglip(mocker, probs_by_key: dict[str, float]):
     fill = remaining / len(unnamed) if unnamed else 0.0
     probs = [probs_by_key.get(k, fill) for k in keys]
     mocker.patch("nomia.siglip.is_available", return_value=True)
-    return mocker.patch("nomia.siglip.scores", return_value=probs)
+    return mocker.patch("nomia.siglip.scores_grouped", return_value=probs)
 
 
 RECEIPT_TEXT = "COSTCO WHOLESALE\nSubtotal 42.10\nChange Due 0.00"
@@ -351,10 +351,54 @@ def test_fast_only_mode_returns_low_confidence_result_without_vlm(mocker):
     assert outcome.route in ("review", "unsorted")
 
 
+def test_corpus_prior_divides_out_an_attractor_category(mocker):
+    # receipt is systematically over-scored (the "attractor"); the batch-mean prior divides
+    # that bias out, so the same raw distribution now resolves to invoice.
+    cfg = NomiaConfig()
+    cfg.fastpath.mode = "fast_only"
+    cfg.fastpath.prob_temperature = 1.0
+    _fake_siglip(mocker, {"receipt": 0.55, "invoice": 0.40})
+
+    keys = [c.key for c in cfg.taxonomy]
+    prior = {k: 0.5 if k == "receipt" else 0.5 / (len(keys) - 1) for k in keys}
+
+    biased = classify_file(_signals(extracted_text=None), cfg)
+    calibrated = classify_file(_signals(extracted_text=None), cfg, corpus_prior=prior)
+
+    assert biased.result.category == "receipt"
+    assert calibrated.result.category == "invoice"
+    assert '"corpus_calibrated": true' in calibrated.raw_response
+    assert '"corpus_calibrated": false' in biased.raw_response
+
+
+def test_compute_corpus_prior_needs_enough_scoreable_files(mocker):
+    from nomia.classify import compute_corpus_prior
+
+    cfg = NomiaConfig()
+    cfg.fastpath.corpus_calibration = True
+    _fake_siglip(mocker, {"receipt": 0.9})
+
+    few = [_signals() for _ in range(3)]
+    assert compute_corpus_prior(few, cfg) is None
+
+    enough = [_signals() for _ in range(8)]
+    prior = compute_corpus_prior(enough, cfg)
+    assert prior is not None
+    assert prior["receipt"] == pytest.approx(0.9)
+
+
+def test_compute_corpus_prior_is_none_when_flag_off(mocker):
+    from nomia.classify import compute_corpus_prior
+
+    cfg = NomiaConfig()  # corpus_calibration defaults False
+    _fake_siglip(mocker, {"receipt": 0.9})
+    assert compute_corpus_prior([_signals() for _ in range(10)], cfg) is None
+
+
 def test_fast_path_siglip_failure_falls_back_to_vlm(mocker):
     cfg = NomiaConfig()
     mocker.patch("nomia.siglip.is_available", return_value=True)
-    mocker.patch("nomia.siglip.scores", return_value=None)  # load/inference failed
+    mocker.patch("nomia.siglip.scores_grouped", return_value=None)  # load/inference failed
     fake_message = SimpleNamespace(
         content='{"category": "photo", "description": "beach", "reason": "r", "confidence": 0.9}'
     )
@@ -381,7 +425,7 @@ def test_fast_only_without_deps_is_a_clean_per_file_failure(mocker):
 def test_fast_path_off_mode_never_touches_siglip(mocker):
     cfg = NomiaConfig()
     cfg.fastpath.mode = "off"
-    mock_scores = mocker.patch("nomia.siglip.scores")
+    mock_scores = mocker.patch("nomia.siglip.scores_grouped")
     fake_message = SimpleNamespace(
         content='{"category": "photo", "description": "beach", "reason": "r", "confidence": 0.9}'
     )

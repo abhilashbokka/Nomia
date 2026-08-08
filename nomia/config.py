@@ -42,9 +42,18 @@ class CategoryDef(BaseModel):
     """Natural-language description of this category for the SigLIP zero-shot classifier
     (fast path). None falls back to a generic prompt derived from the label — fine for
     user-added categories, but the starter taxonomy ships tuned prompts."""
+    extra_vision_prompts: list[str] = Field(default_factory=list)
+    """Optional additional visual descriptions of this category (a descriptor ensemble): the
+    fast path averages the SigLIP text embeddings of all of a category's prompts, so a
+    category can be recognized by several distinct looks ("a grid of numbers", "a slide with
+    sparse large text") instead of one phrasing. Empty list = single-prompt behavior,
+    unchanged."""
 
     def effective_vision_prompt(self) -> str:
         return self.vision_prompt or f"a document or photo of {self.label.lower()}"
+
+    def effective_vision_prompts(self) -> list[str]:
+        return [self.effective_vision_prompt(), *self.extra_vision_prompts]
 
 
 class NamingPreset(BaseModel):
@@ -88,6 +97,14 @@ class FastPathConfig(BaseModel):
     set, T=2.0 raised the auto-filed bucket's correctness from ~90% to ~96% by letting genuinely
     ambiguous files fall through to review/VLM instead of auto-filing on an overconfident
     visual prior. 1.0 disables the flattening."""
+    corpus_calibration: bool = False
+    """Divide each file's SigLIP probabilities by the batch-mean probability vector before
+    fusion (label-free prior correction, computed per run over the batch being organized).
+    Fixes "attractor" categories whose prompt is systematically closer to the whole corpus's
+    look — measured +4-6 accuracy points on the RVL-CDIP external benchmark with the auto
+    bucket's precision intact. Off by default: on small or homogeneous batches (one screenshot
+    folder) the batch mean is dominated by the true class distribution rather than prompt
+    bias, and dividing it out would fight correct answers. Turn on for large, mixed corpora."""
     review_vlm_fallback: bool = True
     """In router mode, a file only reaches the VLM because the fast path already judged it hard
     - and small local VLMs are badly calibrated exactly there (measured on the 207-file set:

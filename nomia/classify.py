@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+from collections.abc import Iterable
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from typing import Literal
 
@@ -299,10 +300,57 @@ FAST_PATH_MODEL_LABEL = "siglip+keywords"
 _THINKING_MODEL_PREFIXES = ("qwen3", "deepseek-r1", "gpt-oss", "magistral")
 
 
-def classify_file_fast(signals: ExtractedSignals, cfg: NomiaConfig) -> ClassificationOutcome | None:
+# Below this many scoreable files, a batch mean reflects the batch's class mix more than
+# systematic prompt bias, so corpus calibration silently stands down.
+MIN_CALIBRATION_FILES = 8
+
+
+def compute_corpus_prior(
+    signals_list: Iterable[ExtractedSignals], cfg: NomiaConfig,
+) -> dict[str, float] | None:
+    """The batch-mean SigLIP probability vector over every scoreable file, used by
+    classify_file_fast as a divisive prior (label-free calibration of prompt bias). Returns
+    None whenever calibration shouldn't apply: flag off, fast path unavailable, or too few
+    scoreable files. The per-image results are memoized inside siglip, so the classification
+    pass that follows re-uses these forwards instead of paying for them twice."""
+    if not cfg.fastpath.corpus_calibration or cfg.fastpath.mode == "off":
+        return None
+    if not siglip.is_available():
+        return None
+
+    prompt_groups = [cat.effective_vision_prompts() for cat in cfg.taxonomy]
+    category_keys = [cat.key for cat in cfg.taxonomy]
+    sums = [0.0] * len(category_keys)
+    count = 0
+    for signals in signals_list:
+        if signals.error is not None or signals.render_png is None:
+            continue
+        probs = siglip.scores_grouped(signals.render_png, prompt_groups, model_id=cfg.fastpath.model_id)
+        if probs is None or len(probs) != len(category_keys):
+            continue
+        for i, p in enumerate(probs):
+            sums[i] += p
+        count += 1
+    if count < MIN_CALIBRATION_FILES:
+        logger.info(
+            "Corpus calibration skipped: only %d scoreable file(s) (minimum %d).",
+            count, MIN_CALIBRATION_FILES,
+        )
+        return None
+    logger.info("Corpus calibration prior computed over %d files.", count)
+    return {k: s / count for k, s in zip(category_keys, sums)}
+
+
+def classify_file_fast(
+    signals: ExtractedSignals, cfg: NomiaConfig,
+    corpus_prior: dict[str, float] | None = None,
+) -> ClassificationOutcome | None:
     """The fast classification tier: SigLIP zero-shot probabilities over the taxonomy's vision
     prompts, multiplied up by keyword-phrase evidence found in the extracted text (PDF layer /
     OCR), renormalized. Orders of magnitude cheaper than a VLM call on CPU-only hardware.
+
+    `corpus_prior` (from compute_corpus_prior) divides each category's probability by its
+    batch-mean before fusion, cancelling systematic prompt bias.
 
     Returns None when the tier can't produce a result at all (optional deps missing, SigLIP
     failure) - the caller decides what a low-confidence (but valid) result means per
@@ -312,11 +360,17 @@ def classify_file_fast(signals: ExtractedSignals, cfg: NomiaConfig) -> Classific
     if not siglip.is_available():
         return None
 
-    prompts = [cat.effective_vision_prompt() for cat in cfg.taxonomy]
+    prompt_groups = [cat.effective_vision_prompts() for cat in cfg.taxonomy]
     category_keys = [cat.key for cat in cfg.taxonomy]
-    probs = siglip.scores(signals.render_png, prompts, model_id=cfg.fastpath.model_id)
+    probs = siglip.scores_grouped(signals.render_png, prompt_groups, model_id=cfg.fastpath.model_id)
     if probs is None or len(probs) != len(category_keys):
         return None
+
+    if corpus_prior is not None:
+        probs = [p / max(corpus_prior.get(key, 0.0), 1e-9) for key, p in zip(category_keys, probs)]
+        total_prior = sum(probs)
+        if total_prior > 0:
+            probs = [p / total_prior for p in probs]
 
     matches = keywords.match_keywords(signals.extracted_text, cfg.taxonomy)
     boost = cfg.fastpath.keyword_boost
@@ -346,6 +400,7 @@ def classify_file_fast(signals: ExtractedSignals, cfg: NomiaConfig) -> Classific
         "tier": "fast",
         "siglip_model": cfg.fastpath.model_id,
         "siglip_probs": {k: round(p, 4) for k, p in zip(category_keys, probs)},
+        "corpus_calibrated": corpus_prior is not None,
         "keyword_hits": matches,
         "keyword_boost": boost,
         "fused_confidence": confidence,
@@ -371,6 +426,7 @@ def classify_file(
     cfg: NomiaConfig,
     *,
     model: str | None = None,
+    corpus_prior: dict[str, float] | None = None,
 ) -> ClassificationOutcome:
     """The unified classification entry point: fast tier (SigLIP + keyword fusion) first when
     enabled, the single Ollama VLM call as the confident fallback. Callers (pipeline.py) are
@@ -387,7 +443,7 @@ def classify_file(
     mode = cfg.fastpath.mode
     escalated_from_fast = False
     if mode != "off":
-        fast = classify_file_fast(signals, cfg)
+        fast = classify_file_fast(signals, cfg, corpus_prior=corpus_prior)
         if fast is not None and (mode == "fast_only" or fast.route == "auto"):
             # In router mode only an auto-confidence fast result short-circuits the VLM; an
             # ambiguous file gets the full vision call rather than being parked in review on

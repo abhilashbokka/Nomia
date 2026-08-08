@@ -178,7 +178,7 @@ def test_build_plan_fast_only_runs_without_ollama(tmp_path, mocker):
     keys = [c.key for c in cfg.taxonomy]
     probs = [0.95 if k == "photo" else 0.05 / (len(keys) - 1) for k in keys]
     mocker.patch("nomia.siglip.is_available", return_value=True)
-    mocker.patch("nomia.siglip.scores", return_value=probs)
+    mocker.patch("nomia.siglip.scores_grouped", return_value=probs)
     mock_check = mocker.patch("nomia.pipeline.check_model_available")
     mock_chat = mocker.patch("ollama.Client.chat")
 

@@ -14,7 +14,12 @@ from typing import Callable, Literal
 from pydantic import BaseModel
 
 from nomia import siglip
-from nomia.classify import ClassificationOutcome, classify_file, check_model_available
+from nomia.classify import (
+    ClassificationOutcome,
+    check_model_available,
+    classify_file,
+    compute_corpus_prior,
+)
 from nomia.config import NomiaConfig
 from nomia.errors import ModelNotAvailableError
 from nomia.extract import extract_all
@@ -193,6 +198,11 @@ def _build_plan_inner(
     signals_by_path = {s.path: s for s in signals_list}
     _notify(progress_cb, "extracting", len(to_process), len(to_process))
 
+    # Optional label-free calibration pass (cfg.fastpath.corpus_calibration): the batch-mean
+    # SigLIP prior divides out systematic prompt bias. SigLIP memoizes per-image scores, so
+    # the classification loop below reuses these forwards rather than paying twice.
+    corpus_prior = compute_corpus_prior(signals_list, cfg)
+
     naming_candidates: list[NamingCandidate] = []
     outcome_by_path: dict[Path, ClassificationOutcome] = {}
     special_items: list[PlannedItem] = []
@@ -220,7 +230,7 @@ def _build_plan_inner(
             ))
             continue
 
-        outcome = classify_file(signals, cfg)
+        outcome = classify_file(signals, cfg, corpus_prior=corpus_prior)
 
         # "unsorted" covers two distinct cases that both bypass the naming template and land in
         # _Unsorted/ with the sanitized original filename: a low-confidence-but-valid
