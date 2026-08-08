@@ -1,0 +1,346 @@
+[
+  {
+    "key": "letter",
+    "label": "Letter",
+    "destination_subfolder": "letter",
+    "vision_prompt": "a photo of a business letter.",
+    "keywords": [
+      "dear",
+      "sincerely",
+      "yours truly",
+      "cordially",
+      "best regards",
+      "enclosure"
+    ],
+    "extra_vision_prompts": [
+      "a scan of a business letter.",
+      "a photocopy of a business letter.",
+      "a low quality scan of a business letter.",
+      "a black and white photo of a business letter.",
+      "a fax of a business letter.",
+      "a blurry photo of a business letter.",
+      "an old photo of a business letter."
+    ]
+  },
+  {
+    "key": "memo",
+    "label": "Memo",
+    "destination_subfolder": "memo",
+    "vision_prompt": "a photo of an interoffice memo.",
+    "keywords": [
+      "memorandum",
+      "memo",
+      "interoffice",
+      "inter-office",
+      "office correspondence"
+    ],
+    "extra_vision_prompts": [
+      "a scan of an interoffice memo.",
+      "a photocopy of an interoffice memo.",
+      "a low quality scan of an interoffice memo.",
+      "a black and white photo of an interoffice memo.",
+      "a fax of an interoffice memo.",
+      "a blurry photo of an interoffice memo.",
+      "an old photo of an interoffice memo."
+    ]
+  },
+  {
+    "key": "email",
+    "label": "Email",
+    "destination_subfolder": "email",
+    "vision_prompt": "a photo of a printed email.",
+    "keywords": [
+      "original message",
+      "forwarded by",
+      "e-mail",
+      "mailto",
+      "email message",
+      "message from"
+    ],
+    "extra_vision_prompts": [
+      "a scan of a printed email.",
+      "a photocopy of a printed email.",
+      "a low quality scan of a printed email.",
+      "a black and white photo of a printed email.",
+      "a fax of a printed email.",
+      "a blurry photo of a printed email.",
+      "an old photo of a printed email."
+    ]
+  },
+  {
+    "key": "handwritten",
+    "label": "Handwritten",
+    "destination_subfolder": "handwritten",
+    "vision_prompt": "a photo of a handwritten note.",
+    "keywords": [],
+    "extra_vision_prompts": [
+      "a scan of a handwritten note.",
+      "a photocopy of a handwritten note.",
+      "a low quality scan of a handwritten note.",
+      "a black and white photo of a handwritten note.",
+      "a fax of a handwritten note.",
+      "a blurry photo of a handwritten note.",
+      "an old photo of a handwritten note."
+    ]
+  },
+  {
+    "key": "advertisement",
+    "label": "Advertisement",
+    "destination_subfolder": "advertisement",
+    "vision_prompt": "a photo of an advertisement.",
+    "keywords": [
+      "surgeon general"
+    ],
+    "extra_vision_prompts": [
+      "a scan of an advertisement.",
+      "a photocopy of an advertisement.",
+      "a low quality scan of an advertisement.",
+      "a black and white photo of an advertisement.",
+      "a fax of an advertisement.",
+      "a blurry photo of an advertisement.",
+      "an old photo of an advertisement."
+    ]
+  },
+  {
+    "key": "scientific_report",
+    "label": "Scientific report",
+    "destination_subfolder": "scientific_report",
+    "vision_prompt": "a photo of a scientific report.",
+    "keywords": [
+      "final report",
+      "progress report",
+      "protocol",
+      "test report",
+      "laboratories"
+    ],
+    "extra_vision_prompts": [
+      "a scan of a scientific report.",
+      "a photocopy of a scientific report.",
+      "a low quality scan of a scientific report.",
+      "a black and white photo of a scientific report.",
+      "a fax of a scientific report.",
+      "a blurry photo of a scientific report.",
+      "an old photo of a scientific report."
+    ]
+  },
+  {
+    "key": "scientific_publication",
+    "label": "Scientific publication",
+    "destination_subfolder": "scientific_publication",
+    "vision_prompt": "a photo of a scientific journal article.",
+    "keywords": [
+      "et al",
+      "journal of",
+      "abstract",
+      "reprinted from",
+      "bibliography"
+    ],
+    "extra_vision_prompts": [
+      "a scan of a scientific journal article.",
+      "a photocopy of a scientific journal article.",
+      "a low quality scan of a scientific journal article.",
+      "a black and white photo of a scientific journal article.",
+      "a fax of a scientific journal article.",
+      "a blurry photo of a scientific journal article.",
+      "an old photo of a scientific journal article."
+    ]
+  },
+  {
+    "key": "specification",
+    "label": "Specification",
+    "destination_subfolder": "specification",
+    "vision_prompt": "a photo of a technical specification.",
+    "keywords": [
+      "specification",
+      "specifications",
+      "tolerance",
+      "effective date",
+      "reason for change",
+      "circumference",
+      "mm"
+    ],
+    "extra_vision_prompts": [
+      "a scan of a technical specification.",
+      "a photocopy of a technical specification.",
+      "a low quality scan of a technical specification.",
+      "a black and white photo of a technical specification.",
+      "a fax of a technical specification.",
+      "a blurry photo of a technical specification.",
+      "an old photo of a technical specification."
+    ]
+  },
+  {
+    "key": "file_folder",
+    "label": "File folder",
+    "destination_subfolder": "file_folder",
+    "vision_prompt": "a photo of a file folder cover.",
+    "keywords": [],
+    "extra_vision_prompts": [
+      "a scan of a file folder cover.",
+      "a photocopy of a file folder cover.",
+      "a low quality scan of a file folder cover.",
+      "a black and white photo of a file folder cover.",
+      "a fax of a file folder cover.",
+      "a blurry photo of a file folder cover.",
+      "an old photo of a file folder cover."
+    ]
+  },
+  {
+    "key": "news_article",
+    "label": "News article",
+    "destination_subfolder": "news_article",
+    "vision_prompt": "a photo of a newspaper article.",
+    "keywords": [
+      "staff writer",
+      "associated press",
+      "continued from page",
+      "editorial",
+      "said the"
+    ],
+    "extra_vision_prompts": [
+      "a scan of a newspaper article.",
+      "a photocopy of a newspaper article.",
+      "a low quality scan of a newspaper article.",
+      "a black and white photo of a newspaper article.",
+      "a fax of a newspaper article.",
+      "a blurry photo of a newspaper article.",
+      "an old photo of a newspaper article."
+    ]
+  },
+  {
+    "key": "budget",
+    "label": "Budget",
+    "destination_subfolder": "budget",
+    "vision_prompt": "a photo of a budget table.",
+    "keywords": [
+      "budget",
+      "fiscal year",
+      "expenditures",
+      "appropriation",
+      "projected"
+    ],
+    "extra_vision_prompts": [
+      "a scan of a budget table.",
+      "a photocopy of a budget table.",
+      "a low quality scan of a budget table.",
+      "a black and white photo of a budget table.",
+      "a fax of a budget table.",
+      "a blurry photo of a budget table.",
+      "an old photo of a budget table."
+    ]
+  },
+  {
+    "key": "invoice",
+    "label": "Invoice",
+    "destination_subfolder": "invoice",
+    "vision_prompt": "a photo of an invoice.",
+    "keywords": [
+      "invoice",
+      "amount due",
+      "remit to",
+      "bill to",
+      "purchase order",
+      "payable"
+    ],
+    "extra_vision_prompts": [
+      "a scan of an invoice.",
+      "a photocopy of an invoice.",
+      "a low quality scan of an invoice.",
+      "a black and white photo of an invoice.",
+      "a fax of an invoice.",
+      "a blurry photo of an invoice.",
+      "an old photo of an invoice."
+    ]
+  },
+  {
+    "key": "presentation",
+    "label": "Presentation",
+    "destination_subfolder": "presentation",
+    "vision_prompt": "a photo of a presentation slide.",
+    "keywords": [
+      "slide",
+      "presentation"
+    ],
+    "extra_vision_prompts": [
+      "a scan of a presentation slide.",
+      "a photocopy of a presentation slide.",
+      "a low quality scan of a presentation slide.",
+      "a black and white photo of a presentation slide.",
+      "a fax of a presentation slide.",
+      "a blurry photo of a presentation slide.",
+      "an old photo of a presentation slide."
+    ]
+  },
+  {
+    "key": "questionnaire",
+    "label": "Questionnaire",
+    "destination_subfolder": "questionnaire",
+    "vision_prompt": "a photo of a questionnaire.",
+    "keywords": [
+      "questionnaire",
+      "survey",
+      "respondent",
+      "interviewer",
+      "check one",
+      "please circle",
+      "do you",
+      "terminate"
+    ],
+    "extra_vision_prompts": [
+      "a scan of a questionnaire.",
+      "a photocopy of a questionnaire.",
+      "a low quality scan of a questionnaire.",
+      "a black and white photo of a questionnaire.",
+      "a fax of a questionnaire.",
+      "a blurry photo of a questionnaire.",
+      "an old photo of a questionnaire."
+    ]
+  },
+  {
+    "key": "resume",
+    "label": "Resume",
+    "destination_subfolder": "resume",
+    "vision_prompt": "a photo of a resume.",
+    "keywords": [
+      "curriculum vitae",
+      "resume",
+      "employment history",
+      "work experience",
+      "professional experience",
+      "biographical sketch",
+      "honors",
+      "postdoctoral",
+      "professor",
+      "education"
+    ],
+    "extra_vision_prompts": [
+      "a scan of a resume.",
+      "a photocopy of a resume.",
+      "a low quality scan of a resume.",
+      "a black and white photo of a resume.",
+      "a fax of a resume.",
+      "a blurry photo of a resume.",
+      "an old photo of a resume."
+    ]
+  },
+  {
+    "key": "form",
+    "label": "Form",
+    "destination_subfolder": "form",
+    "vision_prompt": "a photo of a form.",
+    "keywords": [
+      "please print",
+      "please complete",
+      "form no"
+    ],
+    "extra_vision_prompts": [
+      "a scan of a form.",
+      "a photocopy of a form.",
+      "a low quality scan of a form.",
+      "a black and white photo of a form.",
+      "a fax of a form.",
+      "a blurry photo of a form.",
+      "an old photo of a form."
+    ]
+  }
+]

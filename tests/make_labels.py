@@ -27,14 +27,13 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from nomia.config import NomiaConfig  # noqa: E402
+from nomia.config import CategoryDef, NomiaConfig  # noqa: E402
 from nomia.extract import IMAGE_EXTENSIONS, PDF_EXTENSIONS  # noqa: E402
 
 SUPPORTED = IMAGE_EXTENSIONS | PDF_EXTENSIONS
 
 
-def build_labels(root: Path) -> dict[str, dict[str, str]]:
-    taxonomy_keys = {cat.key for cat in NomiaConfig().taxonomy}
+def build_labels(root: Path, taxonomy_keys: set[str]) -> dict[str, dict[str, str]]:
     labels: dict[str, dict[str, str]] = {}
     owners: dict[str, str] = {}
     skipped_dirs: list[str] = []
@@ -68,13 +67,25 @@ def build_labels(root: Path) -> dict[str, dict[str, str]]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("folder", help="Root folder containing one subfolder per category key.")
+    parser.add_argument(
+        "--taxonomy", default=None,
+        help="JSON file with a list of CategoryDef objects; subfolder names are validated "
+             "against its keys instead of the default taxonomy's (pass the same file to "
+             "benchmark.py --taxonomy).",
+    )
     args = parser.parse_args()
 
     root = Path(args.folder).expanduser().resolve()
     if not root.is_dir():
         raise SystemExit(f"Not a directory: {root}")
 
-    labels = build_labels(root)
+    if args.taxonomy:
+        raw = json.loads(Path(args.taxonomy).resolve().read_text(encoding="utf-8"))
+        taxonomy_keys = {CategoryDef.model_validate(entry).key for entry in raw}
+    else:
+        taxonomy_keys = {cat.key for cat in NomiaConfig().taxonomy}
+
+    labels = build_labels(root, taxonomy_keys)
     if not labels:
         raise SystemExit("No supported files found in any category subfolder.")
 

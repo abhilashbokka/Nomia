@@ -13,6 +13,9 @@ Usage:
     --mode fast    SigLIP + keywords only, never calls Ollama (fastpath.mode = fast_only)
     --mode tiered  fast path first, VLM fallback below auto confidence (fastpath.mode = router)
     --sample-dir   alternate labeled set, e.g. tests/real_sample_files (default tests/sample_files)
+    --taxonomy     JSON file with a list of CategoryDef objects replacing the default taxonomy —
+                   this is how external benchmarks with their own label sets (e.g.
+                   tests/taxonomies/rvl_cdip.json for RVL-CDIP's 16 classes) are run.
 """
 
 from __future__ import annotations
@@ -26,10 +29,20 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from nomia.classify import FAST_PATH_MODEL_LABEL, check_model_available, classify_file  # noqa: E402
-from nomia.config import NomiaConfig  # noqa: E402
-from nomia.extract import extract_signals  # noqa: E402
+from nomia.classify import (  # noqa: E402
+    FAST_PATH_MODEL_LABEL,
+    check_model_available,
+    classify_file,
+    compute_corpus_prior,
+)
+from nomia.config import CategoryDef, NomiaConfig  # noqa: E402
+from nomia.extract import extract_all  # noqa: E402
 from nomia.scanner import scan  # noqa: E402
+
+# Extraction (OCR / PDF rendering) is parallelized exactly like the product pipeline does it
+# (extract_all's thread pool); classification stays serial, matching production. Chunked so a
+# large labeled set doesn't hold every rendered page in memory at once.
+EXTRACT_CHUNK = 64
 
 SAMPLE_DIR = Path(__file__).resolve().parent / "sample_files"
 RESULTS_PATH = Path(__file__).resolve().parent / "benchmark_results.json"
@@ -52,30 +65,61 @@ def run_for_model(model: str, labels: dict, cfg: NomiaConfig, sample_dir: Path) 
     if missing:
         raise SystemExit(f"labels.json references sample files that no longer exist: {missing}")
 
+    import pickle
+    import tempfile
+    import time as _time
+
     per_item = []
     latencies = []
-    for name, label in sorted(labels.items()):
-        record = records_by_name[name]
-        signals = extract_signals(record, cfg)
-        import time as _time
+    ordered = sorted(labels.items())
+    chunk_bounds = [ordered[i:i + EXTRACT_CHUNK] for i in range(0, len(ordered), EXTRACT_CHUNK)]
 
-        t0 = _time.time()
-        outcome = classify_file(signals, cfg, model=model)
-        elapsed = _time.time() - t0
-        latencies.append(elapsed)
+    corpus_prior = None
+    spool_dir: tempfile.TemporaryDirectory | None = None
+    spool_paths: list = []
+    if cfg.fastpath.corpus_calibration:
+        # Calibration needs every file scored before any file is classified, but holding the
+        # whole corpus's rendered pages in memory doesn't scale. So: extract chunk -> feed it
+        # to the prior accumulator (SigLIP memoizes each image's scores - 16 floats) -> spool
+        # the signals to disk -> free the chunk. The classify loop below reads the spool back
+        # chunk by chunk; its scores_grouped calls hit the memo, so vision still runs once.
+        spool_dir = tempfile.TemporaryDirectory(prefix="nomia-bench-spool-")
 
-        predicted = outcome.result.category if outcome.result else None
-        per_item.append({
-            "file": name,
-            "expected": label["category"],
-            "predicted": predicted,
-            "confidence": outcome.result.confidence if outcome.result else None,
-            "route": outcome.route,
-            "tier": "fast" if outcome.model_used == FAST_PATH_MODEL_LABEL else "vlm",
-            "correct": predicted == label["category"],
-            "elapsed_seconds": round(elapsed, 2),
-        })
+        def _extract_and_spool():
+            for i, chunk in enumerate(chunk_bounds):
+                signals_list = extract_all([records_by_name[name] for name, _ in chunk], cfg)
+                path = Path(spool_dir.name) / f"chunk_{i}.pkl"
+                path.write_bytes(pickle.dumps(signals_list))
+                spool_paths.append(path)
+                yield from signals_list
 
+        corpus_prior = compute_corpus_prior(_extract_and_spool(), cfg)
+
+    for i, chunk in enumerate(chunk_bounds):
+        if spool_paths:
+            signals_list = pickle.loads(spool_paths[i].read_bytes())
+        else:
+            signals_list = extract_all([records_by_name[name] for name, _ in chunk], cfg)
+        for (name, label), signals in zip(chunk, signals_list):
+            t0 = _time.time()
+            outcome = classify_file(signals, cfg, model=model, corpus_prior=corpus_prior)
+            elapsed = _time.time() - t0
+            latencies.append(elapsed)
+
+            predicted = outcome.result.category if outcome.result else None
+            per_item.append({
+                "file": name,
+                "expected": label["category"],
+                "predicted": predicted,
+                "confidence": outcome.result.confidence if outcome.result else None,
+                "route": outcome.route,
+                "tier": "fast" if outcome.model_used == FAST_PATH_MODEL_LABEL else "vlm",
+                "correct": predicted == label["category"],
+                "elapsed_seconds": round(elapsed, 2),
+            })
+
+    if spool_dir is not None:
+        spool_dir.cleanup()
     return _summarize(model, per_item, latencies)
 
 
@@ -191,12 +235,47 @@ def main() -> int:
         "--sample-dir", default=None,
         help=f"Directory with labeled files + labels.json (default: {SAMPLE_DIR})",
     )
+    parser.add_argument(
+        "--taxonomy", default=None,
+        help="JSON file with a list of CategoryDef objects to use instead of the default "
+             "taxonomy (for external benchmarks with their own label sets).",
+    )
+    parser.add_argument(
+        "--out", default=None,
+        help=f"Where to write the results JSON (default: {RESULTS_PATH}).",
+    )
+    parser.add_argument(
+        "--fastpath-model", default=None,
+        help="Override cfg.fastpath.model_id (e.g. google/siglip-base-patch16-384).",
+    )
+    parser.add_argument(
+        "--corpus-calibration", action="store_true",
+        help="Enable cfg.fastpath.corpus_calibration (batch-mean prior correction).",
+    )
     args = parser.parse_args()
 
     cfg = NomiaConfig()
     cfg.fastpath.mode = MODE_TO_FASTPATH[args.mode]
+    if args.fastpath_model:
+        cfg.fastpath.model_id = args.fastpath_model
+    if args.corpus_calibration:
+        cfg.fastpath.corpus_calibration = True
+    if args.taxonomy:
+        taxonomy_path = Path(args.taxonomy).resolve()
+        raw = json.loads(taxonomy_path.read_text(encoding="utf-8"))
+        cfg.taxonomy = [CategoryDef.model_validate(entry) for entry in raw]
+        print(f"Using taxonomy from {taxonomy_path.name}: {len(cfg.taxonomy)} categories")
     sample_dir = Path(args.sample_dir).resolve() if args.sample_dir else SAMPLE_DIR
     labels = load_labels(sample_dir)
+
+    label_categories = {entry["category"] for entry in labels.values()}
+    taxonomy_keys = {cat.key for cat in cfg.taxonomy}
+    unknown = sorted(label_categories - taxonomy_keys)
+    if unknown:
+        raise SystemExit(
+            f"labels.json uses categories missing from the taxonomy: {unknown}. "
+            "Pass a matching --taxonomy file."
+        )
 
     if args.mode == "fast":
         from nomia import siglip
@@ -231,8 +310,9 @@ def main() -> int:
         print(f"\nNo models were available to benchmark. Pull at least one, e.g.: ollama pull {cfg.model.default_model}")
         return 1
 
-    RESULTS_PATH.write_text(json.dumps(all_results, indent=2), encoding="utf-8")
-    print(f"\nWrote {RESULTS_PATH}")
+    results_path = Path(args.out).resolve() if args.out else RESULTS_PATH
+    results_path.write_text(json.dumps(all_results, indent=2), encoding="utf-8")
+    print(f"\nWrote {results_path}")
     return 0
 
 
