@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 from collections.abc import Iterable
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
@@ -32,7 +33,11 @@ logger = logging.getLogger(__name__)
 # case a call is slow for any other reason - a single classification must never be able to hang
 # the whole batch (see CLAUDE.md: one bad file never kills the batch).
 MAX_PREDICT_TOKENS = 300
-CALL_TIMEOUT_SECONDS = 45
+# Overridable because the right ceiling is hardware-state-dependent: sustained batch load can
+# thermally throttle a laptop CPU to a fraction of nominal speed (measured: CPU_Speed_Limit 39%
+# after hours of benchmarking), stretching a normally ~5s call past any fixed timeout and
+# silently converting the whole VLM tier into timeouts.
+CALL_TIMEOUT_SECONDS = int(os.environ.get("NOMIA_CALL_TIMEOUT_SECONDS", "45"))
 # A model's FIRST call in a batch includes Ollama loading gigabytes of weights from disk, which
 # alone can exceed CALL_TIMEOUT_SECONDS on this hardware. Worse, a timed-out call keeps running
 # server-side (Ollama serializes inference), so every queued call behind it times out too - one
