@@ -69,8 +69,8 @@ fixed category list is a discriminative task, so the default path is:
   `--fastpath-model <hf-id>`, `--corpus-calibration`, `--out <path>` (so RVL runs never
   clobber `tests/benchmark_results.json`). The tuned 16-class RVL-CDIP taxonomy lives at
   `tests/taxonomies/rvl_cdip.json`. Measured there (2026-08: eval-3200 set, 200/class,
-  disjoint from all tuning, single run): 63.1% ± 1.7 zero-shot* at ~0.55s/file SigLIP-384 +
-  ~1s OCR, auto bucket 24% coverage @ 91.7% correct (*prompts/keywords label-tuned on a
+  disjoint from all tuning, single run): 63.1% ± 1.7 zero-shot* at ~0.5s/file SigLIP-384
+  (0.44s cool-machine) + ~1s OCR, auto bucket 24% coverage @ 91.7% correct (*prompts/keywords label-tuned on a
   disjoint split; calibration transductive — full honesty ledger and per-method history in
   `research/rvl-cdip/`, gitignored).
 - **Accuracy-mode encoder (measured 2026-08-08, benchmark.py-confirmed):**
