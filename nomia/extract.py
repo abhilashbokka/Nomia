@@ -14,7 +14,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Literal
 
-import fitz  # PyMuPDF
+import pymupdf as fitz  # PyMuPDF (the bare "fitz" alias is deprecated in 1.28+)
 import pillow_heif
 from PIL import Image, ImageOps, UnidentifiedImageError
 from PIL.ExifTags import IFD

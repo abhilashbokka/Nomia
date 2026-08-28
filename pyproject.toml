@@ -22,18 +22,22 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-geocode = ["reverse_geocoder>=1.5.0"]
 macos = ["ocrmac>=1.0.0; sys_platform == 'darwin'"]
-# SigLIP fast-path classifier (see nomia/siglip.py). On Intel Macs the resolver lands on the
-# last compatible combo (torch 2.2.2 + numpy<2) - the exact stack the accuracy numbers were
-# measured on; other platforms get current versions.
+# SigLIP fast-path classifier (see nomia/siglip.py). Apple Silicon, Linux, and Windows get
+# current torch/numpy. The x86_64-macOS fork keeps the last Intel-compatible combo
+# (torch 2.2.2 + numpy<2) so the repo still installs on the 2019 Intel MBP the original
+# accuracy/latency numbers were measured on. transformers is capped <5 to keep the measured
+# SigLIP stack; bump only after re-running tests/benchmark.py --mode fast. The two torch/numpy
+# ranges are deliberately disjoint: uv's universal resolver otherwise collapses both forks onto
+# the old Intel versions everywhere.
 fastpath = [
     "torch>=2.2,<2.3; sys_platform == 'darwin' and platform_machine == 'x86_64'",
-    "torch>=2.2; sys_platform != 'darwin' or platform_machine != 'x86_64'",
+    "torch>=2.5; sys_platform != 'darwin' or platform_machine != 'x86_64'",
     "transformers>=4.44,<5",
     "sentencepiece>=0.1.99",
     "protobuf>=4",
     "numpy<2; sys_platform == 'darwin' and platform_machine == 'x86_64'",
+    "numpy>=2; sys_platform != 'darwin' or platform_machine != 'x86_64'",
 ]
 
 [dependency-groups]

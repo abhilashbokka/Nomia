@@ -113,8 +113,10 @@ uv run nomia doctor        # confirms Ollama + the image/PDF libraries are ready
 uv run nomia serve         # launches the local web UI at http://127.0.0.1:8000
 ```
 
-> Intel Macs: the project pins Python 3.12 (`.python-version`) because the last
-> Intel-macOS PyTorch wheel (2.2.2, needed by the fast path) has no 3.13 build.
+> Python: `.python-version` pins 3.12, the interpreter every published benchmark number was
+> measured on; `uv sync` fetches it automatically. Apple Silicon, Linux, and Windows get
+> current PyTorch/NumPy. Intel Macs still work but are capped at PyTorch 2.2.2 (the last
+> x86-macOS wheel, 3.12 only) by a platform marker in `pyproject.toml`.
 
 Or drive it entirely from the CLI:
 

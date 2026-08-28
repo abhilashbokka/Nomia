@@ -62,7 +62,7 @@ def cmd_doctor(args: argparse.Namespace) -> int:
 
     # --- Image/PDF libraries ---
     try:
-        import fitz  # PyMuPDF
+        import pymupdf as fitz  # PyMuPDF
 
         print(f"[OK]   PyMuPDF imports cleanly (version {fitz.__version__ if hasattr(fitz, '__version__') else 'unknown'})")
     except Exception as exc:  # noqa: BLE001

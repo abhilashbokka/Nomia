@@ -1,4 +1,4 @@
-import fitz
+import pymupdf as fitz
 import pytest
 from PIL import Image
 

@@ -16,7 +16,7 @@ import os
 import time
 from pathlib import Path
 
-import fitz
+import pymupdf as fitz
 import pillow_heif
 from PIL import Image, ImageDraw
 

@@ -87,9 +87,14 @@ fixed category list is a discriminative task, so the default path is:
 - Per-item audit: fast-path decisions store the full evidence (per-category SigLIP probs,
   keyword hits, fused confidence) as JSON in `raw_model_response`, with `model_used =
   "siglip+keywords"` — invariant #3 applies to every tier equally.
-- **Intel-Mac dependency ceiling:** the last x86-macOS torch wheel is 2.2.2 (cp312), which is why
-  `.python-version` pins 3.12 and the `fastpath` extra forks its torch requirement by platform.
-  Don't bump either without checking wheels exist for this machine.
+- **Platform forks in `fastpath`:** primary dev machine is now an Apple Silicon Mac (M5 Max,
+  2026-08), which gets current torch/numpy. The x86_64-macOS markers keep the 2019 Intel MBP
+  installable (last x86 torch wheel is 2.2.2, cp312 only). The two torch and numpy ranges are
+  deliberately disjoint (`<2.3` vs `>=2.5`; `<2` vs `>=2`): uv's universal resolver otherwise
+  collapses both forks onto the old Intel versions on every platform (observed 2026-08-27).
+  `.python-version` stays 3.12 for reproducibility of the published numbers, not for wheels.
+  All latency figures in this file were measured on the Intel machine unless stated otherwise;
+  re-run `tests/benchmark.py` before quoting any number for the new hardware.
 
 ## Five non-negotiable invariants
 
